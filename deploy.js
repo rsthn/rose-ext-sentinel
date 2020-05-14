@@ -45,7 +45,10 @@ run('echo Published: v'+package.version+' >>messages.log')
 .then(r => run('git branch temporal'))
 .then(r => run('git checkout temporal'))
 
+.then(r => run('del .gitignore'))
+.then(r => run('del composer.json'))
 .then(r => run('del deploy.js'))
+.then(r => run('del LICENSE'))
 .then(r => run('del README.md'))
 
 .then(r => run('git commit -a -m "Preparing for release: '+package.version+'"'))
