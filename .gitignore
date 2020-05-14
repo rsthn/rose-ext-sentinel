@@ -1,6 +1,0 @@
---*
-@*
-vendor/
-.svn/
-*.log
-*.tmp
