@@ -4,7 +4,8 @@ This extension adds user authentication features to Wind.
 
 > **NOTE:** The extension detects the presence of Wind, when not installed, this extension will simply not be loaded.
 
-<br/>&nbsp;
+
+
 # Database Structure
 
 The following tables are required by Sentinel. Note that any of the tables below can be extended if desired, the columns shown are the required minimum.
@@ -51,7 +52,8 @@ CREATE TABLE user_privileges
 ENGINE=InnoDB CHARSET=utf8mb4 COLLATE=utf8mb4_bin;
 ```
 
-<br/>&nbsp;
+
+
 ## Exposed Functions
 
 ### `sentinel::auth-required`

@@ -24,13 +24,14 @@ use Rose\Data\Connection;
 use Rose\Configuration;
 use Rose\Session;
 use Rose\Resources;
+use Rose\Extensions;
 use Rose\Text;
 use Rose\Expr;
 use Rose\Map;
 
 use Rose\Ext\Wind;
 
-if (!file_exists(dirname(__file__).'../Wind/Main.php'))
+if (!Extensions::isInstalled('Wind'))
 	return;
 
 /*
