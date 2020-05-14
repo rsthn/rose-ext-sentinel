@@ -1,0 +1,6 @@
+--*
+@*
+vendor/
+.svn/
+*.log
+*.tmp
