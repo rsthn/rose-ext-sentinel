@@ -30,7 +30,7 @@ use Rose\Map;
 
 use Rose\Ext\Wind;
 
-if (!file_exists(dirname(__file__).'/Wind.php'))
+if (!file_exists(dirname(__file__).'/Wind/Main.php'))
 	return;
 
 /*
