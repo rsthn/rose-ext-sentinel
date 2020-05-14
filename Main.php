@@ -30,7 +30,7 @@ use Rose\Map;
 
 use Rose\Ext\Wind;
 
-if (!file_exists(dirname(__file__).'/Wind/Main.php'))
+if (!file_exists(dirname(__file__).'../Wind/Main.php'))
 	return;
 
 /*
@@ -39,7 +39,7 @@ if (!file_exists(dirname(__file__).'/Wind/Main.php'))
 
 class Sentinel
 {
-	public static function hashPassword ($value)
+	public static function passwordHash ($value)
 	{
 		$conf = Configuration::getInstance();
 		return Connection::escape(\hash('sha384', $conf->Sentinel->password_prefix . $value . $conf->Sentinel->password_suffix));
@@ -77,7 +77,7 @@ class Sentinel
 	public static function login ($username, $password)
 	{
 		$data = Resources::getInstance()->Database->execAssoc (
-			'SELECT * FROM ##users WHERE username='.Connection::escape($username).' AND password='.Sentinel::hashPassword($password)
+			'SELECT * FROM ##users WHERE username='.Connection::escape($username).' AND password='.Sentinel::passwordHash($password)
 		);
 
 		if (!$data) return false;
@@ -168,44 +168,7 @@ class Sentinel
 	}
 };
 
-/*
-	**NOTE** : utf8mb4_bin collation is required in "users" to make lowercase and uppercase distinction (password).
-
-	CREATE TABLE users
-	(
-		user_id int unsigned primary key auto_increment,
-		created datetime default null,
-
-		is_authorized tinyint not null default 1,
-		is_active tinyint not null default 1,
-
-		username varchar(128) not null unique key collate utf8mb4_bin,
-		password char(96) not null collate utf8mb4_bin
-	)
-	ENGINE=InnoDB CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci AUTO_INCREMENT=1;
-
-	CREATE TABLE privileges
-	(
-		privilege_id int unsigned primary key auto_increment,
-
-		name varchar(128) not null unique key,
-		label varchar(512) not null default ''
-	)
-	ENGINE=InnoDB CHARSET=utf8mb4 COLLATE=utf8mb4_bin AUTO_INCREMENT=1;
-
-	CREATE TABLE user_privileges
-	(
-		user_id int unsigned not null,
-		privilege_id int unsigned not null,
-
-		primary key (user_id, privilege_id),
-
-		constraint foreign key (user_id) references users (user_id) on delete cascade,
-		constraint foreign key (privilege_id) references privileges (privilege_id) on delete cascade
-	)
-	ENGINE=InnoDB CHARSET=utf8mb4 COLLATE=utf8mb4_bin;
-*/
-
+/* ****************************************************************************** */
 Expr::register('sentinel::auth-required', function($args, $parts, $data)
 {
 	if (!Sentinel::status())
@@ -216,10 +179,15 @@ Expr::register('sentinel::auth-required', function($args, $parts, $data)
 
 Expr::register('sentinel::privilege-required', function($args, $parts, $data)
 {
-	if (!Sentinel::verifyPrivileges($args->{1}))
+	if (!Sentinel::verifyPrivileges($args->get(1)))
 		Wind::reply([ 'response' => Sentinel::status() ? Wind::R_PRIVILEGE_REQUIRED : Wind::R_NOT_AUTHENTICATED ]);
 
 	return null;
+});
+
+Expr::register('sentinel::passwordHash', function($args, $parts, $data)
+{
+	return Sentinel::passwordHash($args->get(1));
 });
 
 Expr::register('sentinel::status', function($args, $parts, $data)
