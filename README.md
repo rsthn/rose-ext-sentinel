@@ -1,9 +1,14 @@
-# Sentinel Authentication Extension (Rose Wind)
+# Sentinel Authentication Extension
 
 This extension adds user authentication features to Wind.
 
 > **NOTE:** The extension detects the presence of Wind, when not installed, this extension will simply not be loaded.
 
+# Installation
+
+```sh
+composer require rsthn/rose-ext-sentinel
+```
 
 
 # Database Structure
@@ -58,28 +63,28 @@ ENGINE=InnoDB CHARSET=utf8mb4 COLLATE=utf8mb4_bin;
 
 ### `sentinel::auth-required`
 
-Fails with error code `Wind::R_NOT_AUTHENTICATED` if the active user is not authenticated.
+Fails with error code `Wind::R_NOT_AUTHENTICATED` if the active session is not authenticated.
 
 ### `sentinel::privilege-required` privileges:string
 
-Verifies if the active user has the specified privileges. Fails with `Wind::R_NOT_AUTHENTICATED` if the user has not been authenticated, or with `Wind::R_PRIVILEGE_REQUIRED` if the privilege requirements are not met.
+Verifies if the active session has the specified privileges. Fails with `Wind::R_NOT_AUTHENTICATED` if the session has not been authenticated, or with `Wind::R_PRIVILEGE_REQUIRED` if the privilege requirements are not met.
 
-### `sentinel::passwordHash` value:string
+### `sentinel::password` password:string
 
-Calculates the hash of the given value and returns it.
+Calculates the hash of the given password and returns it.
 
 ### `sentinel::status`
 
-Returns the active user's authentication status (boolean).
+Returns the authentication status (boolean) of the active session.
 
 ### `sentinel::login` username:string password:string
 
-Authenticated the active user with the specified credentials, fails if the data is incorrect by returning `Wind::R_INVALID_DATA`.
+Authenticates the active session with the specified credentials, fails if the data is incorrect by returning `Wind::R_VALIDATION_ERROR`.
 
 ### `sentinel::logout`
 
-Removes authentication status from the active user.
+Removes authentication status from the active session.
 
 ### `sentinel::reload`
 
-Reloads the active user's data and privileges from the database.
+Reloads the active session data and privileges from the database.

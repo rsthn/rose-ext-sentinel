@@ -23,6 +23,7 @@ use Rose\Data\Connection;
 
 use Rose\Configuration;
 use Rose\Session;
+use Rose\Strings;
 use Rose\Resources;
 use Rose\Extensions;
 use Rose\Text;
@@ -40,10 +41,12 @@ if (!Extensions::isInstalled('Wind'))
 
 class Sentinel
 {
-	public static function passwordHash ($value)
+	public static function password ($value, $escape=false)
 	{
 		$conf = Configuration::getInstance();
-		return Connection::escape(\hash('sha384', $conf->Sentinel->password_prefix . $value . $conf->Sentinel->password_suffix));
+		$value = \hash('sha384', $conf->Sentinel->prefix . $value . $conf->Sentinel->suffix);
+		if ($escape) $value = Connection::escape($value);
+		return $value;
 	}
 
 	private static function getPrivileges ($username=null)
@@ -78,7 +81,7 @@ class Sentinel
 	public static function login ($username, $password)
 	{
 		$data = Resources::getInstance()->Database->execAssoc (
-			'SELECT * FROM ##users WHERE username='.Connection::escape($username).' AND password='.Sentinel::passwordHash($password)
+			'SELECT * FROM ##users WHERE username='.Connection::escape($username).' AND password='.Sentinel::password($password, true)
 		);
 
 		if (!$data) return false;
@@ -113,7 +116,8 @@ class Sentinel
 	{
 		if (!$privilege) return true;
 
-		$privilege = Text::split(',', ($conf->Sentinel->enableMaster == 'true' ? 'master,' : '').$privilege)->map(function($i) { return Connection::escape($i); })->join(',');
+		$privilege = Text::split(',', ($conf->Sentinel->master == 'true' ? 'master,' : '').$privilege)->map(function($i) { return Connection::escape($i); })->join(',');
+
 		$conf = Configuration::getInstance();
 		$conn = Resources::getInstance()->Database;
 
@@ -186,9 +190,9 @@ Expr::register('sentinel::privilege-required', function($args, $parts, $data)
 	return null;
 });
 
-Expr::register('sentinel::passwordHash', function($args, $parts, $data)
+Expr::register('sentinel::password', function($args, $parts, $data)
 {
-	return Sentinel::passwordHash($args->get(1));
+	return Sentinel::password($args->get(1));
 });
 
 Expr::register('sentinel::status', function($args, $parts, $data)
@@ -199,7 +203,7 @@ Expr::register('sentinel::status', function($args, $parts, $data)
 Expr::register('sentinel::login', function($args, $parts, $data)
 {
 	if (!Sentinel::login ($args->get(1), $args->get(2)))
-		Wind::reply([ 'response' => Wind::R_INVALID_DATA ]);
+		Wind::reply([ 'response' => Wind::R_VALIDATION_ERROR, 'error' => Strings::get('@errors/authentication') ]);
 
 	return null;
 });

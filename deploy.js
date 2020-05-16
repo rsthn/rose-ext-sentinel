@@ -38,10 +38,9 @@ function run (command)
 };
 
 
-run('echo Published: v'+package.version+' >>messages.log')
+run('svn-msg "Published: v'+package.version+'"')
 .then(r => run('git add .'))
-.then(r => run('git commit -F messages.log'))
-.then(r => run('svn commit -F messages.log'))
+.then(r => run('git commit -F .svn\\messages.log'))
 .then(r => run('git push'))
 .then(r => run('git branch temporal'))
 .then(r => run('git checkout temporal'))
@@ -49,7 +48,6 @@ run('echo Published: v'+package.version+' >>messages.log')
 .then(r => run('del .gitignore'))
 .then(r => run('del deploy.js'))
 .then(r => run('del README.md'))
-.then(r => run('del messages.log'))
 
 .then(r => run('git commit -a -m "Preparing for release: '+package.version+'"'))
 .then(r => run('git push origin temporal'))
