@@ -1,6 +1,6 @@
 # Sentinel Authentication Extension
 
-This extension adds user authentication features to Wind.
+This extension adds user authentication features to [Wind](https://github.com/rsthn/rose-ext-wind).
 
 > **NOTE:** The extension detects the presence of Wind, when not installed, this extension will simply not be loaded.
 
@@ -48,6 +48,7 @@ CREATE TABLE user_privileges
 (
     user_id int unsigned not null,
     privilege_id int unsigned not null,
+	tag tinyint default 0,
 
     primary key (user_id, privilege_id),
 
