@@ -41,6 +41,24 @@ if (!Extensions::isInstalled('Wind'))
 
 class Sentinel
 {
+	public const ERR_NONE					= 0;
+	public const ERR_AUTHORIZATION			= 1;
+	public const ERR_CREDENTIALS			= 2;
+
+	public static function errorName ($code)
+	{
+		switch ($code)
+		{
+			case Sentinel::ERR_NOT_AUTHORIZED:
+				return 'err_authorization';
+
+			case Sentinel::ERR_CREDENTIALS:
+				return 'err_credentials';
+		}
+
+		return 'err_none';
+	}
+
 	public static function password ($value, $escape=false)
 	{
 		$conf = Configuration::getInstance();
@@ -78,18 +96,35 @@ class Sentinel
 		return Session::$data->currentUser != null ? true : false;
 	}
 
-	public static function login ($username, $password)
+	public static function login (string $username, string $password)
 	{
 		$data = Resources::getInstance()->Database->execAssoc (
 			'SELECT * FROM ##users WHERE username='.Connection::escape($username).' AND password='.Sentinel::password($password, true)
 		);
 
-		if (!$data) return false;
+		if (!$data) return Sentinel::ERR_CREDENTIALS;
+
+		if ((int)$data->is_authorized == 0)
+			return Sentinel::ERR_AUTHORIZATION;
 
 		Session::$data->currentUser = $data;
 		Session::$data->currentUser->privileges = Sentinel::getPrivileges();
 
 		return true;
+	}
+
+	public static function valid (string $username, string $password)
+	{
+		$data = Resources::getInstance()->Database->execAssoc (
+			'SELECT * FROM ##users WHERE username='.Connection::escape($username).' AND password='.Sentinel::password($password, true)
+		);
+
+		if (!$data) return Sentinel::ERR_CREDENTIALS;
+
+		if ((int)$data->is_authorized == 0)
+			return Sentinel::ERR_AUTHORIZATION;
+
+		return Sentinel::ERR_NONE;
 	}
 
 	public static function logout()
@@ -174,6 +209,16 @@ class Sentinel
 };
 
 /* ****************************************************************************** */
+Expr::register('sentinel::password', function($args, $parts, $data)
+{
+	return Sentinel::password($args->get(1));
+});
+
+Expr::register('sentinel::status', function($args, $parts, $data)
+{
+	return Sentinel::status();
+});
+
 Expr::register('sentinel::auth-required', function($args, $parts, $data)
 {
 	if (!Sentinel::status())
@@ -190,20 +235,32 @@ Expr::register('sentinel::privilege-required', function($args, $parts, $data)
 	return null;
 });
 
-Expr::register('sentinel::password', function($args, $parts, $data)
+Expr::register('sentinel::has-privilege', function($args, $parts, $data)
 {
-	return Sentinel::password($args->get(1));
+	return Sentinel::verifyPrivileges($args->get(1), $args->{2});
 });
 
-Expr::register('sentinel::status', function($args, $parts, $data)
+Expr::register('sentinel::valid', function($args, $parts, $data)
 {
-	return Sentinel::status();
+	return Sentinel::valid ($args->get(1), $args->get(2)) == Sentinel::ERR_NONE;
+});
+
+Expr::register('sentinel::validate', function($args, $parts, $data)
+{
+	$code = Sentinel::valid ($args->get(1), $args->get(2));
+
+	if ($code != Sentinel::ERR_NONE)
+		Wind::reply([ 'response' => Wind::R_VALIDATION_ERROR, 'error' => Strings::get('@messages/'.Sentinel::errorName($code)) ]);
+
+	return null;
 });
 
 Expr::register('sentinel::login', function($args, $parts, $data)
 {
-	if (!Sentinel::login ($args->get(1), $args->get(2)))
-		Wind::reply([ 'response' => Wind::R_VALIDATION_ERROR, 'error' => Strings::get('@messages/authentication') ]);
+	$code = Sentinel::login ($args->get(1), $args->get(2));
+
+	if ($code != Sentinel::ERR_NONE)
+		Wind::reply([ 'response' => Wind::R_VALIDATION_ERROR, 'error' => Strings::get('@messages/'.Sentinel::errorName($code)) ]);
 
 	return null;
 });
