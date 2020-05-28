@@ -203,7 +203,7 @@ Expr::register('sentinel::status', function($args, $parts, $data)
 Expr::register('sentinel::login', function($args, $parts, $data)
 {
 	if (!Sentinel::login ($args->get(1), $args->get(2)))
-		Wind::reply([ 'response' => Wind::R_VALIDATION_ERROR, 'error' => Strings::get('@errors/authentication') ]);
+		Wind::reply([ 'response' => Wind::R_VALIDATION_ERROR, 'error' => Strings::get('@messages/authentication') ]);
 
 	return null;
 });
