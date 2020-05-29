@@ -1,7 +1,7 @@
 {
     "name": "rsthn/rose-ext-sentinel",
     "description": "Sentinel Authentication (Wind)",
-    "version": "1.0.9",
+    "version": "1.0.10",
     "type": "rose-extension",
     "license": "Apache-2.0",
     "authors": [
@@ -16,5 +16,10 @@
     "minimum-stability": "stable",
     "require": {
         "rsthn/rose-extension-installer": "*"
+    },
+    "autoload": {
+        "psr-4": {
+            "Rose\\Ext\\Sentinel\\": "."
+        }
     }
 }
