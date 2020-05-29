@@ -49,7 +49,7 @@ class Sentinel
 	{
 		switch ($code)
 		{
-			case Sentinel::ERR_NOT_AUTHORIZED:
+			case Sentinel::ERR_AUTHORIZATION:
 				return 'err_authorization';
 
 			case Sentinel::ERR_CREDENTIALS:
@@ -110,7 +110,7 @@ class Sentinel
 		Session::$data->currentUser = $data;
 		Session::$data->currentUser->privileges = Sentinel::getPrivileges();
 
-		return true;
+		return Sentinel::ERR_NONE;
 	}
 
 	public static function valid (string $username, string $password)
