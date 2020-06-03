@@ -62,14 +62,6 @@ ENGINE=InnoDB CHARSET=utf8mb4 COLLATE=utf8mb4_bin;
 
 ## Exposed Functions
 
-### `sentinel::auth-required`
-
-Fails with error code `Wind::R_NOT_AUTHENTICATED` if the active session is not authenticated.
-
-### `sentinel::privilege-required` privileges:string
-
-Verifies if the active session has the specified privileges. Fails with `Wind::R_NOT_AUTHENTICATED` if the session has not been authenticated, or with `Wind::R_PRIVILEGE_REQUIRED` if the privilege requirements are not met.
-
 ### `sentinel::password` password:string
 
 Calculates the hash of the given password and returns it.
@@ -78,9 +70,29 @@ Calculates the hash of the given password and returns it.
 
 Returns the authentication status (boolean) of the active session.
 
+### `sentinel::auth-required`
+
+Fails with error code `Wind::R_NOT_AUTHENTICATED` if the active session is not authenticated.
+
+### `sentinel::privilege-required` privileges:string
+
+Verifies if the active session has the specified privileges. Fails with `Wind::R_NOT_AUTHENTICATED` if the session has not been authenticated, or with `Wind::R_PRIVILEGE_REQUIRED` if the privilege requirements are not met.
+
+### `sentinel::has-privilege` privileges:string
+
+Verifies if the active session has the specified privileges. Does not fail, instead returns `boolean` instead.
+
+### `sentinel::valid` username:string password:string
+
+Verifies if the specified credentials are valid, returns `boolean`.
+
+### `sentinel::validate` username:string password:string
+
+Verifies if the given credentials are valid, fails with `Wind::R_VALIDATION_ERROR` and sets the `error` field to `strings.@messages.err_authorization` or `strings.@messages.err_credentials`.
+
 ### `sentinel::login` username:string password:string
 
-Authenticates the active session with the specified credentials, fails if the data is incorrect by returning `Wind::R_VALIDATION_ERROR`.
+Verifies if the given credentials are valid, fails with `Wind::R_VALIDATION_ERROR` and sets the `error` field to `strings.@messages.err_authorization` or `strings.@messages.err_credentials`. When successful, opens a session and loads the `currentUser` field with the data of the user that has been authenticated.
 
 ### `sentinel::logout`
 
@@ -89,3 +101,6 @@ Removes authentication status from the active session.
 ### `sentinel::reload`
 
 Reloads the active session data and privileges from the database.
+
+- Added 'sentinel::validate' to ensure the specified credentials are valid, fails with Wind::reply.
+- Added 'sentinel::valid' to verify if the specified credentials are valid, returns a boolean.

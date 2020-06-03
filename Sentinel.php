@@ -79,7 +79,7 @@ class Sentinel
 			return $conn->execArray (
 				' SELECT DISTINCT p.name FROM ##privileges p'.
 				' INNER JOIN ##user_privileges u ON u.privilege_id=p.privilege_id'.
-				' WHERE u.user_id='.Session::$data->currentUser->user_id
+				' WHERE u.user_id='.Session::$data->user->user_id
 			)->map(function($i) { return $i->name; });
 		}
 
@@ -87,13 +87,13 @@ class Sentinel
 			' SELECT DISTINCT p.name FROM ##privileges p'.
 			' INNER JOIN ##user_privileges u ON u.privilege_id=p.privilege_id'.
 			' INNER JOIN ##users s ON s.is_active=1 AND s.user_id=u.user_id AND s.username='.Connection::escape($username).
-			' WHERE u.user_id='.Session::$data->currentUser->user_id
+			' WHERE u.user_id='.Session::$data->user->user_id
 		)->map(function($i) { return $i->name; });
 	}
 
 	public static function status()
 	{
-		return Session::$data->currentUser != null ? true : false;
+		return Session::$data->user != null ? true : false;
 	}
 
 	public static function login (string $username, string $password)
@@ -107,8 +107,10 @@ class Sentinel
 		if ((int)$data->is_authorized == 0)
 			return Sentinel::ERR_AUTHORIZATION;
 
+		$data->privileges = Sentinel::getPrivileges();
+
 		Session::$data->currentUser = $data;
-		Session::$data->currentUser->privileges = Sentinel::getPrivileges();
+		Session::$data->user = $data;
 
 		return Sentinel::ERR_NONE;
 	}
@@ -129,7 +131,7 @@ class Sentinel
 
 	public static function logout()
 	{
-		Session::$data->remove('currentUser');
+		Session::$data->remove('user');
 	}
 
 	public static function reload()
@@ -138,13 +140,15 @@ class Sentinel
 			return;
 
 		$data = Resources::getInstance()->Database->execAssoc (
-			'SELECT * FROM ##users WHERE user_id='.Session::$data->currentUser->user_id
+			'SELECT * FROM ##users WHERE user_id='.Session::$data->user->user_id
 		);
 
 		if (!$data) return;
 
+		$data->privileges = Sentinel::getPrivileges();
+
 		Session::$data->currentUser = $data;
-		Session::$data->currentUser->privileges = Sentinel::getPrivileges();
+		Session::$data->user = $data;
 	}
 
 	public static function hasPrivilege ($privilege, $username=null)
@@ -165,7 +169,7 @@ class Sentinel
 			$count = $conn->execScalar (
 				' SELECT COUNT(*) FROM ##privileges p '.
 				' INNER JOIN ##user_privileges up ON up.privilege_id=p.privilege_id'.
-				' WHERE up.user_id='.Session::$data->currentUser->user_id.' AND p.name IN ('.$privilege.')'
+				' WHERE up.user_id='.Session::$data->user->user_id.' AND p.name IN ('.$privilege.')'
 			);
 		}
 		else
