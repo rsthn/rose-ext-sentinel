@@ -29,6 +29,7 @@ use Rose\Extensions;
 use Rose\Text;
 use Rose\Expr;
 use Rose\Map;
+use Rose\Arry;
 
 use Rose\Ext\Wind;
 
@@ -107,10 +108,10 @@ class Sentinel
 		if ((int)$data->is_authorized == 0)
 			return Sentinel::ERR_AUTHORIZATION;
 
-		$data->privileges = Sentinel::getPrivileges();
-
-		Session::$data->currentUser = $data;
 		Session::$data->user = $data;
+		Session::$data->currentUser = $data;
+
+		$data->privileges = Sentinel::getPrivileges();
 
 		return Sentinel::ERR_NONE;
 	}
@@ -145,10 +146,10 @@ class Sentinel
 
 		if (!$data) return;
 
-		$data->privileges = Sentinel::getPrivileges();
-
-		Session::$data->currentUser = $data;
 		Session::$data->user = $data;
+		Session::$data->currentUser = $data;
+
+		$data->privileges = Sentinel::getPrivileges();
 	}
 
 	public static function hasPrivilege ($privilege, $username=null)
