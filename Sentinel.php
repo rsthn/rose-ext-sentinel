@@ -63,7 +63,7 @@ class Sentinel
 	public static function password ($value, $escape=false)
 	{
 		$conf = Configuration::getInstance();
-		$value = \hash('sha384', $conf->Sentinel->prefix . $value . $conf->Sentinel->suffix);
+		$value = \hash($conf->Sentinel->hash ? $conf->Sentinel->hash : 'sha384', $conf->Sentinel->prefix . $value . $conf->Sentinel->suffix);
 		if ($escape) $value = Connection::escape($value);
 		return $value;
 	}
@@ -156,10 +156,10 @@ class Sentinel
 	{
 		if (!$privilege) return true;
 
-		$privilege = Text::split(',', ($conf->Sentinel->master == 'true' ? 'master,' : '').$privilege)->map(function($i) { return Connection::escape($i); })->join(',');
-
 		$conf = Configuration::getInstance();
 		$conn = Resources::getInstance()->Database;
+
+		$privilege = Text::split(',', ($conf->Sentinel->master == 'true' ? 'master,' : '').$privilege)->map(function($i) { return Connection::escape($i); })->join(',');
 
 		$count = 0;
 

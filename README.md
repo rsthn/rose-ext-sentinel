@@ -58,13 +58,22 @@ CREATE TABLE user_privileges
 ENGINE=InnoDB CHARSET=utf8mb4 COLLATE=utf8mb4_bin;
 ```
 
+## Configuration Section: `Sentinel`
 
 
-## Exposed Functions
+|Field|Type|Description|Default|
+|----|----|-----------|-------|
+|hash|`string`|Name of the hash algorithm to use (passed directly to PHP's `hash` function).|sha384
+|prefix|`string`|Password prefix (salt).|Optional
+|suffix|`string`|Password suffix (salt).|Optional
+|master|`bool`|Indicates if privilege `'master'` should be added to all privilege checks.|`false`
+
+
+## Expression Functions
 
 ### `sentinel::password` password:string
 
-Calculates the hash of the given password and returns it.
+Calculates the hash of the given password and returns it. The plain password gets the `Sentinel.suffix` and `Sentinel.prefix` appended and prepended respectively before calculating its hash indicated by `Sentinel.hash`.
 
 ### `sentinel::status`
 
