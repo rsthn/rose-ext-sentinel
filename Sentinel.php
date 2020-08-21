@@ -116,6 +116,16 @@ class Sentinel
 		return Sentinel::ERR_NONE;
 	}
 
+	public static function manual (Map $data)
+	{
+		Session::$data->user = $data;
+		Session::$data->currentUser = $data;
+
+		$data->privileges = $data->has('privileges') ? $data->get('privileges') : new Arry();
+
+		return Sentinel::ERR_NONE;
+	}
+
 	public static function valid (string $username, string $password)
 	{
 		$data = Resources::getInstance()->Database->execAssoc (
@@ -267,6 +277,12 @@ Expr::register('sentinel::login', function($args, $parts, $data)
 	if ($code != Sentinel::ERR_NONE)
 		Wind::reply([ 'response' => Wind::R_VALIDATION_ERROR, 'error' => Strings::get('@messages/'.Sentinel::errorName($code)) ]);
 
+	return null;
+});
+
+Expr::register('sentinel::login:manual', function($args, $parts, $data)
+{
+	Sentinel::manual ($args->get(1));
 	return null;
 });
 
