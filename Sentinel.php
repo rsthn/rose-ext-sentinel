@@ -46,6 +46,8 @@ class Sentinel
 	public const ERR_AUTHORIZATION			= 1;
 	public const ERR_CREDENTIALS			= 2;
 
+	private static $loadedSession = false;
+
 	public static function errorName ($code)
 	{
 		switch ($code)
@@ -94,6 +96,13 @@ class Sentinel
 
 	public static function status()
 	{
+		if (!self::$loadedSession && !Session::$sessionOpen)
+		{
+			Session::open(false);
+			self::$loadedSession = true;
+			Session::close(true);
+		}
+
 		return Session::$data->user != null ? true : false;
 	}
 
@@ -108,6 +117,8 @@ class Sentinel
 		if ((int)$data->is_authorized == 0)
 			return Sentinel::ERR_AUTHORIZATION;
 
+		Session::open(true);
+
 		Session::$data->user = $data;
 		Session::$data->currentUser = $data;
 
@@ -118,6 +129,8 @@ class Sentinel
 
 	public static function manual (Map $data)
 	{
+		Session::open(true);
+
 		Session::$data->user = $data;
 		Session::$data->currentUser = $data;
 
@@ -142,6 +155,9 @@ class Sentinel
 
 	public static function logout()
 	{
+		if (!Session::open(false))
+			return;
+
 		Session::$data->remove('user');
 	}
 
