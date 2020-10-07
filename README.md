@@ -26,7 +26,7 @@ CREATE TABLE users
     is_authorized tinyint not null default 1,
     is_active tinyint not null default 1,
 
-    username varchar(128) not null unique key collate utf8mb4_bin,
+    username varchar(128) not null collate utf8mb4_bin,
     password char(96) not null collate utf8mb4_bin
 )
 ENGINE=InnoDB CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci AUTO_INCREMENT=1;

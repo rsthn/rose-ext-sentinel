@@ -70,7 +70,7 @@ class Sentinel
 		return $value;
 	}
 
-	private static function getPrivileges ($username=null)
+	private static function getPrivileges ($username=null, $both=false)
 	{
 		$conn = Resources::getInstance()->Database;
 
@@ -79,19 +79,19 @@ class Sentinel
 			if (!Sentinel::status())
 				return new Arry ();
 
-			return $conn->execArray (
-				' SELECT DISTINCT p.name FROM ##privileges p'.
+			return $conn->execQuery (
+				' SELECT DISTINCT p.privilege_id, p.name FROM ##privileges p'.
 				' INNER JOIN ##user_privileges u ON u.privilege_id=p.privilege_id'.
 				' WHERE u.user_id='.Session::$data->user->user_id
-			)->map(function($i) { return $i->name; });
+			)->rows->map(function($i) use(&$both) { return $both ? $i : $i->name; });
 		}
 
-		return $conn->execArray (
-			' SELECT DISTINCT p.name FROM ##privileges p'.
+		return $conn->execQuery (
+			' SELECT DISTINCT p.privilege_id, p.name FROM ##privileges p'.
 			' INNER JOIN ##user_privileges u ON u.privilege_id=p.privilege_id'.
 			' INNER JOIN ##users s ON s.is_active=1 AND s.user_id=u.user_id AND s.username='.Connection::escape($username).
 			' WHERE u.user_id='.Session::$data->user->user_id
-		)->map(function($i) { return $i->name; });
+		)->rows->map(function($i) use(&$both) { return $both ? $i : $i->name; });
 	}
 
 	public static function status()
@@ -109,7 +109,7 @@ class Sentinel
 	public static function login (string $username, string $password)
 	{
 		$data = Resources::getInstance()->Database->execAssoc (
-			'SELECT * FROM ##users WHERE username='.Connection::escape($username).' AND password='.Sentinel::password($password, true)
+			'SELECT * FROM ##users WHERE is_active=1 AND username='.Connection::escape($username).' AND password='.Sentinel::password($password, true)
 		);
 
 		if (!$data) return Sentinel::ERR_CREDENTIALS;
@@ -122,7 +122,9 @@ class Sentinel
 		Session::$data->user = $data;
 		Session::$data->currentUser = $data;
 
-		$data->privileges = Sentinel::getPrivileges();
+		$tmp = Sentinel::getPrivileges(null, true);
+		$data->privileges = $tmp->map(function($i) { return $i->name; });
+		$data->privilege_ids = $tmp->map(function($i) { return $i->privilege_id; });
 
 		return Sentinel::ERR_NONE;
 	}
@@ -135,6 +137,7 @@ class Sentinel
 		Session::$data->currentUser = $data;
 
 		$data->privileges = $data->has('privileges') ? $data->get('privileges') : new Arry();
+		$data->privilege_ids = $data->has('privilege_ids') ? $data->get('privilege_ids') : new Arry();
 
 		return Sentinel::ERR_NONE;
 	}
@@ -142,7 +145,7 @@ class Sentinel
 	public static function valid (string $username, string $password)
 	{
 		$data = Resources::getInstance()->Database->execAssoc (
-			'SELECT * FROM ##users WHERE username='.Connection::escape($username).' AND password='.Sentinel::password($password, true)
+			'SELECT * FROM ##users WHERE is_active=1 AND username='.Connection::escape($username).' AND password='.Sentinel::password($password, true)
 		);
 
 		if (!$data) return Sentinel::ERR_CREDENTIALS;
@@ -167,7 +170,7 @@ class Sentinel
 			return;
 
 		$data = Resources::getInstance()->Database->execAssoc (
-			'SELECT * FROM ##users WHERE user_id='.Session::$data->user->user_id
+			'SELECT * FROM ##users WHERE is_active=1 AND user_id='.Session::$data->user->user_id
 		);
 
 		if (!$data) return;
@@ -175,7 +178,9 @@ class Sentinel
 		Session::$data->user = $data;
 		Session::$data->currentUser = $data;
 
-		$data->privileges = Sentinel::getPrivileges();
+		$tmp = Sentinel::getPrivileges(null, true);
+		$data->privileges = $tmp->map(function($i) { return $i->name; });
+		$data->privilege_ids = $tmp->map(function($i) { return $i->privilege_id; });
 	}
 
 	public static function hasPrivilege ($privilege, $username=null)
@@ -204,7 +209,7 @@ class Sentinel
 			$count = $conn->execScalar (
 				' SELECT COUNT(*) FROM ##privileges p '.
 				' INNER JOIN ##user_privileges up ON up.privilege_id=p.privilege_id'.
-				' INNER JOIN ##users u ON u.username='.Connection::escape($username).' AND up.user_id=u.user_id'.
+				' INNER JOIN ##users u ON u.is_active=1 AND u.username='.Connection::escape($username).' AND up.user_id=u.user_id'.
 				' WHERE priv.name IN ('.$privilege.')'
 			);
 		}
