@@ -106,11 +106,20 @@ class Sentinel
 		return Session::$data->user != null ? true : false;
 	}
 
-	public static function login (string $username, string $password)
+	public static function login (string $username, ?string $password=null)
 	{
-		$data = Resources::getInstance()->Database->execAssoc (
-			'SELECT * FROM ##users WHERE is_active=1 AND username='.Connection::escape($username).' AND password='.Sentinel::password($password, true)
-		);
+		if ($password !== null)
+		{
+			$data = Resources::getInstance()->Database->execAssoc (
+				'SELECT * FROM ##users WHERE is_active=1 AND username='.Connection::escape($username).' AND password='.Sentinel::password($password, true)
+			);
+		}
+		else
+		{
+			$data = Resources::getInstance()->Database->execAssoc (
+				'SELECT * FROM ##users WHERE is_active=1 AND user_id='.Connection::escape($username)
+			);
+		}
 
 		if (!$data) return Sentinel::ERR_CREDENTIALS;
 
@@ -304,6 +313,16 @@ Expr::register('sentinel::login', function($args, $parts, $data)
 Expr::register('sentinel::login:manual', function($args, $parts, $data)
 {
 	Sentinel::manual ($args->get(1));
+	return null;
+});
+
+Expr::register('sentinel::login:forced', function($args, $parts, $data)
+{
+	$code = Sentinel::login ($args->get(1));
+
+	if ($code != Sentinel::ERR_NONE)
+		Wind::reply([ 'response' => Wind::R_VALIDATION_ERROR, 'error' => Strings::get('@messages/'.Sentinel::errorName($code)) ]);
+
 	return null;
 });
 

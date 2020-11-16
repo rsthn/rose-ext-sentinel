@@ -15,8 +15,6 @@ composer require rsthn/rose-ext-sentinel
 
 The following tables are required by Sentinel. Note that any of the tables below can be extended if desired, the columns shown are the required minimum.
 
-> **NOTE** : The `utf8mb4_bin` collation is required in `users` to make lowercase and uppercase distinction.
-
 ```sql
 CREATE TABLE users
 (
@@ -26,10 +24,13 @@ CREATE TABLE users
     is_authorized tinyint not null default 1,
     is_active tinyint not null default 1,
 
-    username varchar(128) not null collate utf8mb4_bin,
-    password char(96) not null collate utf8mb4_bin
+    username varchar(128) not null,
+    password varchar(96) not null
 )
 ENGINE=InnoDB CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci AUTO_INCREMENT=1;
+
+ALTER TABLE users ADD index n_username (username);
+ALTER TABLE users ADD index n_is_active (is_active);
 ```
 
 ```sql
