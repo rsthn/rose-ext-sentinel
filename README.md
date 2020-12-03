@@ -102,7 +102,11 @@ Verifies if the given credentials are valid, fails with `Wind::R_VALIDATION_ERRO
 
 ### `sentinel::login` username:string password:string
 
-Verifies if the given credentials are valid, fails with `Wind::R_VALIDATION_ERROR` and sets the `error` field to `strings.@messages.err_authorization` or `strings.@messages.err_credentials`. When successful, opens a session and loads the `currentUser` field with the data of the user that has been authenticated.
+Verifies if the given credentials are valid, fails with `Wind::R_VALIDATION_ERROR` and sets the `error` field to `strings.@messages.err_authorization` or `strings.@messages.err_credentials`. When successful, opens a session and loads the `user` field with the data of the user that has been authenticated.
+
+### `sentinel::login:forced` user_id:int
+
+Verifies if the user exist and forces a login without password. Fails with `Wind::R_VALIDATION_ERROR` and sets the `error` field to `strings.@messages.err_authorization` or `strings.@messages.err_credentials`. When successful, opens a session and loads the `user` field with the data of the user that has been authenticated.
 
 ### `sentinel::logout`
 

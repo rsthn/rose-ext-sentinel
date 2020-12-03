@@ -129,7 +129,6 @@ class Sentinel
 		Session::open(true);
 
 		Session::$data->user = $data;
-		Session::$data->currentUser = $data;
 
 		$tmp = Sentinel::getPrivileges(null, true);
 		$data->privileges = $tmp->map(function($i) { return $i->name; });
@@ -143,7 +142,6 @@ class Sentinel
 		Session::open(true);
 
 		Session::$data->user = $data;
-		Session::$data->currentUser = $data;
 
 		$data->privileges = $data->has('privileges') ? $data->get('privileges') : new Arry();
 		$data->privilege_ids = $data->has('privilege_ids') ? $data->get('privilege_ids') : new Arry();
@@ -175,7 +173,7 @@ class Sentinel
 
 	public static function reload()
 	{
-		if (!Sentinel::status())
+		if (!Session::open(false))
 			return;
 
 		$data = Resources::getInstance()->Database->execAssoc (
@@ -185,7 +183,6 @@ class Sentinel
 		if (!$data) return;
 
 		Session::$data->user = $data;
-		Session::$data->currentUser = $data;
 
 		$tmp = Sentinel::getPrivileges(null, true);
 		$data->privileges = $tmp->map(function($i) { return $i->name; });
