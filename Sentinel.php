@@ -216,7 +216,7 @@ class Sentinel
 				' SELECT COUNT(*) FROM ##privileges p '.
 				' INNER JOIN ##user_privileges up ON up.privilege_id=p.privilege_id'.
 				' INNER JOIN ##users u ON u.is_active=1 AND u.username='.Connection::escape($username).' AND up.user_id=u.user_id'.
-				' WHERE priv.name IN ('.$privilege.')'
+				' WHERE p.name IN ('.$privilege.')'
 			);
 		}
 
@@ -247,6 +247,38 @@ class Sentinel
 		}
 
 		return false;
+	}
+
+	public static function hasLevel ($level, $username=null)
+	{
+		if (!$level) return true;
+
+		$conf = Configuration::getInstance();
+		$conn = Resources::getInstance()->Database;
+
+		$count = 0;
+
+		if ($username == null)
+		{
+			if (!Sentinel::status()) return false;
+
+			$count = $conn->execScalar (
+				' SELECT COUNT(*) FROM ##privileges p '.
+				' INNER JOIN ##user_privileges up ON up.privilege_id=p.privilege_id'.
+				' WHERE up.user_id='.Session::$data->user->user_id.' AND FLOOR(p.privilege_id/100) = '.$level
+			);
+		}
+		else
+		{
+			$count = $conn->execScalar (
+				' SELECT COUNT(*) FROM ##privileges p '.
+				' INNER JOIN ##user_privileges up ON up.privilege_id=p.privilege_id'.
+				' INNER JOIN ##users u ON u.is_active=1 AND u.username='.Connection::escape($username).' AND up.user_id=u.user_id'.
+				' WHERE FLOOR(p.privilege_id/100) = '.$level
+			);
+		}
+
+		return $count != 0 ? true : false;
 	}
 };
 
@@ -280,6 +312,19 @@ Expr::register('sentinel::privilege-required', function($args, $parts, $data)
 Expr::register('sentinel::has-privilege', function($args, $parts, $data)
 {
 	return Sentinel::verifyPrivileges($args->get(1), $args->{2});
+});
+
+Expr::register('sentinel::level-required', function($args, $parts, $data)
+{
+	if (!Sentinel::hasLevel ($args->get(1)))
+		Wind::reply([ 'response' => Sentinel::status() ? Wind::R_PRIVILEGE_REQUIRED : Wind::R_NOT_AUTHENTICATED ]);
+
+	return null;
+});
+
+Expr::register('sentinel::has-level', function($args, $parts, $data)
+{
+	return Sentinel::hasLevel ($args->get(1));
 });
 
 Expr::register('sentinel::valid', function($args, $parts, $data)

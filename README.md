@@ -90,7 +90,15 @@ Verifies if the active session has the specified privileges. Fails with `Wind::R
 
 ### `sentinel::has-privilege` privileges:string
 
-Verifies if the active session has the specified privileges. Does not fail, instead returns `boolean` instead.
+Verifies if the active session has the specified privileges. Does not fail, returns `boolean` instead.
+
+### `sentinel::level-required` level:int
+
+Verifies if the active session meets the specified minimum privilege level. The level is the privilege_id divided by 100. Fails with `Wind::R_NOT_AUTHENTICATED` if the session has not been authenticated, or with `Wind::R_PRIVILEGE_REQUIRED` if the privilege requirements are not met.
+
+### `sentinel::has-level` level:int
+
+Verifies if the active session meets the specified minimum privilege level. The level is the privilege_id divided by 100. Does not fail, returns `boolean` instead.
 
 ### `sentinel::valid` username:string password:string
 
