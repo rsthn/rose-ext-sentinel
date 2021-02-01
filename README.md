@@ -100,6 +100,10 @@ Verifies if the active session meets the specified minimum privilege level. The 
 
 Verifies if the active session meets the specified minimum privilege level. The level is the privilege_id divided by 100. Does not fail, returns `boolean` instead.
 
+### `sentinel::get-level` [username:string]
+
+Returns the privilege level of the active session user, or of the given user if `username` is provided.
+
 ### `sentinel::valid` username:string password:string
 
 Verifies if the specified credentials are valid, returns `boolean`.

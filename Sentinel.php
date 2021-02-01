@@ -265,7 +265,7 @@ class Sentinel
 			$count = $conn->execScalar (
 				' SELECT COUNT(*) FROM ##privileges p '.
 				' INNER JOIN ##user_privileges up ON up.privilege_id=p.privilege_id'.
-				' WHERE up.user_id='.Session::$data->user->user_id.' AND FLOOR(p.privilege_id/100) = '.$level
+				' WHERE up.user_id='.Session::$data->user->user_id.' AND FLOOR(p.privilege_id/100) >= '.$level
 			);
 		}
 		else
@@ -274,11 +274,38 @@ class Sentinel
 				' SELECT COUNT(*) FROM ##privileges p '.
 				' INNER JOIN ##user_privileges up ON up.privilege_id=p.privilege_id'.
 				' INNER JOIN ##users u ON u.is_active=1 AND u.username='.Connection::escape($username).' AND up.user_id=u.user_id'.
-				' WHERE FLOOR(p.privilege_id/100) = '.$level
+				' WHERE FLOOR(p.privilege_id/100) >= '.$level
 			);
 		}
 
 		return $count != 0 ? true : false;
+	}
+
+	public static function getLevel ($username=null)
+	{
+		$conf = Configuration::getInstance();
+		$conn = Resources::getInstance()->Database;
+
+		if ($username == null)
+		{
+			if (!Sentinel::status()) return 0;
+
+			$level = $conn->execScalar (
+				' SELECT MAX(FLOOR(p.privilege_id/100)) FROM ##privileges p '.
+				' INNER JOIN ##user_privileges up ON up.privilege_id=p.privilege_id'.
+				' WHERE up.user_id='.Session::$data->user->user_id
+			);
+		}
+		else
+		{
+			$level = $conn->execScalar (
+				' SELECT MAX(FLOOR(p.privilege_id/100)) FROM ##privileges p '.
+				' INNER JOIN ##user_privileges up ON up.privilege_id=p.privilege_id'.
+				' INNER JOIN ##users u ON u.is_active=1 AND u.username='.Connection::escape($username).' AND up.user_id=u.user_id'
+			);
+		}
+
+		return (int)$level;
 	}
 };
 
@@ -325,6 +352,11 @@ Expr::register('sentinel::level-required', function($args, $parts, $data)
 Expr::register('sentinel::has-level', function($args, $parts, $data)
 {
 	return Sentinel::hasLevel ($args->get(1));
+});
+
+Expr::register('sentinel::get-level', function($args, $parts, $data)
+{
+	return Sentinel::getLevel ($args->has(1) ? $args->get(1) : null);
 });
 
 Expr::register('sentinel::valid', function($args, $parts, $data)
