@@ -23,6 +23,7 @@ use Rose\Data\Connection;
 
 use Rose\Configuration;
 use Rose\Session;
+use Rose\Gateway;
 use Rose\Strings;
 use Rose\Resources;
 use Rose\Extensions;
@@ -101,12 +102,57 @@ class Sentinel
 			Session::open(false);
 			self::$loadedSession = true;
 			Session::close(true);
+
+			$auth = Gateway::getInstance()->server->HTTP_AUTHORIZATION;
+			if ($auth)
+			{
+				if (Text::startsWith($auth, 'BEARER'))
+				{
+					$code = self::authorize (Text::substring($auth, 7), false);
+					if ($code != Sentinel::ERR_NONE)
+						Wind::reply([ 'response' => Wind::R_VALIDATION_ERROR, 'error' => Strings::get('@messages/'.Sentinel::errorName($code)) ]);
+				}
+				else if (Text::startsWith($auth, 'BASIC'))
+				{
+					$auth = base64_decode(Text::substring($auth, 6));
+					$i = strpos($auth, ':');
+					if ($i == -1)
+						Wind::reply([ 'response' => Wind::R_VALIDATION_ERROR, 'error' => Strings::get('@messages/'.Sentinel::errorName(Sentinel::ERR_CREDENTIALS)) ]);
+
+					$username = Text::substring($auth, 0, $i);
+					$password = Text::substring($auth, $i+1);
+
+					$code = self::login ($username, $password, false);
+					if ($code != Sentinel::ERR_NONE)
+						Wind::reply([ 'response' => Wind::R_VALIDATION_ERROR, 'error' => Strings::get('@messages/'.Sentinel::errorName($code)) ]);
+				}
+			}
 		}
 
 		return Session::$data->user != null ? true : false;
 	}
 
-	public static function login (string $username, ?string $password=null)
+	public static function authorize (string $token, bool $openSession=true)
+	{
+		$data = Resources::getInstance()->Database->execAssoc (
+			'SELECT u.* FROM ##users u INNER JOIN ##tokens t ON t.is_active=1 AND t.is_authorized=1 AND t.user_id=u.user_id WHERE u.is_active=1 AND u.is_authorized=1 AND t.token='.Connection::escape($token)
+		);
+
+		if (!$data) return Sentinel::ERR_AUTHORIZATION;
+
+		if ($openSession)
+			Session::open(true);
+
+		Session::$data->user = $data;
+
+		$tmp = Sentinel::getPrivileges(null, true);
+		$data->privileges = $tmp->map(function($i) { return $i->name; });
+		$data->privilege_ids = $tmp->map(function($i) { return $i->privilege_id; });
+
+		return Sentinel::ERR_NONE;
+	}
+
+	public static function login (string $username, ?string $password=null, bool $openSession=true)
 	{
 		if ($password !== null)
 		{
@@ -126,7 +172,8 @@ class Sentinel
 		if ((int)$data->is_authorized == 0)
 			return Sentinel::ERR_AUTHORIZATION;
 
-		Session::open(true);
+		if ($openSession)
+			Session::open(true);
 
 		Session::$data->user = $data;
 
@@ -377,6 +424,19 @@ Expr::register('sentinel::validate', function($args, $parts, $data)
 Expr::register('sentinel::login', function($args, $parts, $data)
 {
 	$code = Sentinel::login ($args->get(1), $args->get(2));
+
+	if ($code != Sentinel::ERR_NONE)
+		Wind::reply([ 'response' => Wind::R_VALIDATION_ERROR, 'error' => Strings::get('@messages/'.Sentinel::errorName($code)) ]);
+
+	return null;
+});
+
+Expr::register('sentinel::authorize', function($args, $parts, $data)
+{
+	if ($args->has(2))
+		$code = Sentinel::authorize ($args->get(1), \Rose\bool($args->get(2)));
+	else
+		$code = Sentinel::authorize ($args->get(1), false);
 
 	if ($code != Sentinel::ERR_NONE)
 		Wind::reply([ 'response' => Wind::R_VALIDATION_ERROR, 'error' => Strings::get('@messages/'.Sentinel::errorName($code)) ]);

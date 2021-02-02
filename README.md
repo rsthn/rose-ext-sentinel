@@ -59,6 +59,22 @@ CREATE TABLE user_privileges
 ENGINE=InnoDB CHARSET=utf8mb4 COLLATE=utf8mb4_bin;
 ```
 
+```sql
+CREATE TABLE tokens
+(
+	token varchar(256) primary key,
+    user_id int unsigned not null,
+
+    is_authorized tinyint not null default 1,
+    is_active tinyint not null default 1,
+
+	constraint foreign key (user_id) references users (user_id) on delete cascade
+)
+ENGINE=InnoDB CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci AUTO_INCREMENT=1;
+
+ALTER TABLE tokens ADD index n_is_active (is_active);
+```
+
 ## Configuration Section: `Sentinel`
 
 
@@ -116,9 +132,17 @@ Verifies if the given credentials are valid, fails with `Wind::R_VALIDATION_ERRO
 
 Verifies if the given credentials are valid, fails with `Wind::R_VALIDATION_ERROR` and sets the `error` field to `strings.@messages.err_authorization` or `strings.@messages.err_credentials`. When successful, opens a session and loads the `user` field with the data of the user that has been authenticated.
 
+Note that Sentinel will automatically run the login process (without creating a session) if the `Authorization: BASIC data` header is detected.
+
 ### `sentinel::login:forced` user_id:int
 
 Verifies if the user exist and forces a login without password. Fails with `Wind::R_VALIDATION_ERROR` and sets the `error` field to `strings.@messages.err_authorization` or `strings.@messages.err_credentials`. When successful, opens a session and loads the `user` field with the data of the user that has been authenticated.
+
+### `sentinel::authorize` token:string [persistent:bool=false]
+
+Verifies if the given token is valid and authorizes access. Fails with `Wind::R_VALIDATION_ERROR` and sets the `error` field to `strings.@messages.err_authorization`. When successful, opens a session (if persistent is set to true), and loads the `user` field with the data of the user related to the token that has been authorized.
+
+Note that Sentinel will automatically run the authorization process (without creating a session) if the `Authorization: BEARER token` header is detected.
 
 ### `sentinel::logout`
 
