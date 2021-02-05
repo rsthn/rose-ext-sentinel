@@ -1,8 +1,6 @@
 # Sentinel Authentication Extension
 
-This extension adds user authentication features to [Wind](https://github.com/rsthn/rose-ext-wind).
-
-> **NOTE:** The extension detects the presence of Wind, when not installed, this extension will simply not be loaded.
+This extension adds user authentication features to [Rose](https://github.com/rsthn/rose-core).
 
 # Installation
 
@@ -18,14 +16,14 @@ The following tables are required by Sentinel. Note that any of the tables below
 ```sql
 CREATE TABLE users
 (
-    user_id int unsigned primary key auto_increment,
-    created datetime default null,
+	user_id int unsigned primary key auto_increment,
+	created datetime default null,
 
-    is_authorized tinyint not null default 1,
-    is_active tinyint not null default 1,
+	is_authorized tinyint not null default 1,
+	is_active tinyint not null default 1,
 
-    username varchar(128) not null,
-    password varchar(96) not null
+	username varchar(128) not null,
+	password varchar(96) not null
 )
 ENGINE=InnoDB CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci AUTO_INCREMENT=1;
 
@@ -36,10 +34,10 @@ ALTER TABLE users ADD index n_is_active (is_active);
 ```sql
 CREATE TABLE privileges
 (
-    privilege_id int unsigned primary key auto_increment,
+	privilege_id int unsigned primary key auto_increment,
 
-    name varchar(128) not null unique key,
-    label varchar(512) not null default ''
+	name varchar(128) not null unique key,
+	label varchar(512) not null default ''
 )
 ENGINE=InnoDB CHARSET=utf8mb4 COLLATE=utf8mb4_bin AUTO_INCREMENT=1;
 ```
@@ -47,14 +45,14 @@ ENGINE=InnoDB CHARSET=utf8mb4 COLLATE=utf8mb4_bin AUTO_INCREMENT=1;
 ```sql
 CREATE TABLE user_privileges
 (
-    user_id int unsigned not null,
-    privilege_id int unsigned not null,
+	user_id int unsigned not null,
+	privilege_id int unsigned not null,
 	tag tinyint default 0,
 
-    primary key (user_id, privilege_id),
+	primary key (user_id, privilege_id),
 
-    constraint foreign key (user_id) references users (user_id) on delete cascade,
-    constraint foreign key (privilege_id) references privileges (privilege_id) on delete cascade
+	constraint foreign key (user_id) references users (user_id) on delete cascade,
+	constraint foreign key (privilege_id) references privileges (privilege_id) on delete cascade
 )
 ENGINE=InnoDB CHARSET=utf8mb4 COLLATE=utf8mb4_bin;
 ```
@@ -63,10 +61,10 @@ ENGINE=InnoDB CHARSET=utf8mb4 COLLATE=utf8mb4_bin;
 CREATE TABLE tokens
 (
 	token varchar(256) primary key,
-    user_id int unsigned not null,
+	user_id int unsigned not null,
 
-    is_authorized tinyint not null default 1,
-    is_active tinyint not null default 1,
+	is_authorized tinyint not null default 1,
+	is_active tinyint not null default 1,
 
 	constraint foreign key (user_id) references users (user_id) on delete cascade
 )
@@ -92,62 +90,82 @@ ALTER TABLE tokens ADD index n_is_active (is_active);
 
 Calculates the hash of the given password and returns it. The plain password gets the `Sentinel.suffix` and `Sentinel.prefix` appended and prepended respectively before calculating its hash indicated by `Sentinel.hash`.
 
+<br/>&nbsp;
 ### `sentinel::status`
 
 Returns the authentication status (boolean) of the active session.
 
+<br/>&nbsp;
 ### `sentinel::auth-required`
 
 Fails with error code `Wind::R_NOT_AUTHENTICATED` if the active session is not authenticated.
 
+<br/>&nbsp;
 ### `sentinel::privilege-required` privileges:string
 
 Verifies if the active session has the specified privileges. Fails with `Wind::R_NOT_AUTHENTICATED` if the session has not been authenticated, or with `Wind::R_PRIVILEGE_REQUIRED` if the privilege requirements are not met.
 
+<br/>&nbsp;
 ### `sentinel::has-privilege` privileges:string
 
 Verifies if the active session has the specified privileges. Does not fail, returns `boolean` instead.
 
+<br/>&nbsp;
 ### `sentinel::level-required` level:int
 
 Verifies if the active session meets the specified minimum privilege level. The level is the privilege_id divided by 100. Fails with `Wind::R_NOT_AUTHENTICATED` if the session has not been authenticated, or with `Wind::R_PRIVILEGE_REQUIRED` if the privilege requirements are not met.
 
+<br/>&nbsp;
 ### `sentinel::has-level` level:int
 
 Verifies if the active session meets the specified minimum privilege level. The level is the privilege_id divided by 100. Does not fail, returns `boolean` instead.
 
+<br/>&nbsp;
 ### `sentinel::get-level` [username:string]
 
 Returns the privilege level of the active session user, or of the given user if `username` is provided.
 
+<br/>&nbsp;
 ### `sentinel::valid` username:string password:string
 
 Verifies if the specified credentials are valid, returns `boolean`.
 
+<br/>&nbsp;
 ### `sentinel::validate` username:string password:string
 
 Verifies if the given credentials are valid, fails with `Wind::R_VALIDATION_ERROR` and sets the `error` field to `strings.@messages.err_authorization` or `strings.@messages.err_credentials`.
 
+<br/>&nbsp;
 ### `sentinel::login` username:string password:string
 
 Verifies if the given credentials are valid, fails with `Wind::R_VALIDATION_ERROR` and sets the `error` field to `strings.@messages.err_authorization` or `strings.@messages.err_credentials`. When successful, opens a session and loads the `user` field with the data of the user that has been authenticated.
 
 Note that Sentinel will automatically run the login process (without creating a session) if the `Authorization: BASIC data` header is detected.
 
+When using Apache the HTTP_AUTHORIZATION header is not sent to PHP, however by setting the following in your `.htaccess` it will be available for Sentinel to use it.
+
+```
+SetEnvIf Authorization "(.*)" HTTP_AUTHORIZATION=$1
+```
+
+<br/>&nbsp;
 ### `sentinel::login:forced` user_id:int
 
 Verifies if the user exist and forces a login without password. Fails with `Wind::R_VALIDATION_ERROR` and sets the `error` field to `strings.@messages.err_authorization` or `strings.@messages.err_credentials`. When successful, opens a session and loads the `user` field with the data of the user that has been authenticated.
 
+<br/>&nbsp;
 ### `sentinel::authorize` token:string [persistent:bool=false]
 
 Verifies if the given token is valid and authorizes access. Fails with `Wind::R_VALIDATION_ERROR` and sets the `error` field to `strings.@messages.err_authorization`. When successful, opens a session (if persistent is set to true), and loads the `user` field with the data of the user related to the token that has been authorized.
 
 Note that Sentinel will automatically run the authorization process (without creating a session) if the `Authorization: BEARER token` header is detected.
 
+<br/>&nbsp;
 ### `sentinel::logout`
 
 Removes authentication status from the active session.
 
+<br/>&nbsp;
 ### `sentinel::reload`
 
 Reloads the active session data and privileges from the database.

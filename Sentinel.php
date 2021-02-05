@@ -106,25 +106,27 @@ class Sentinel
 			$auth = Gateway::getInstance()->server->HTTP_AUTHORIZATION;
 			if ($auth)
 			{
-				if (Text::startsWith($auth, 'BEARER'))
+				$tmp = Text::toUpperCase($auth);
+
+				if (Text::startsWith($tmp, 'BEARER'))
 				{
 					$code = self::authorize (Text::substring($auth, 7), false);
 					if ($code != Sentinel::ERR_NONE)
-						Wind::reply([ 'response' => Wind::R_VALIDATION_ERROR, 'error' => Strings::get('@messages/'.Sentinel::errorName($code)) ]);
+						Wind::reply([ 'response' => Wind::R_VALIDATION_ERROR, 'error' => Strings::get('@messages.'.Sentinel::errorName($code)) ]);
 				}
-				else if (Text::startsWith($auth, 'BASIC'))
+				else if (Text::startsWith($tmp, 'BASIC'))
 				{
 					$auth = base64_decode(Text::substring($auth, 6));
 					$i = strpos($auth, ':');
 					if ($i == -1)
-						Wind::reply([ 'response' => Wind::R_VALIDATION_ERROR, 'error' => Strings::get('@messages/'.Sentinel::errorName(Sentinel::ERR_CREDENTIALS)) ]);
+						Wind::reply([ 'response' => Wind::R_VALIDATION_ERROR, 'error' => Strings::get('@messages.'.Sentinel::errorName(Sentinel::ERR_CREDENTIALS)) ]);
 
 					$username = Text::substring($auth, 0, $i);
 					$password = Text::substring($auth, $i+1);
 
 					$code = self::login ($username, $password, false);
 					if ($code != Sentinel::ERR_NONE)
-						Wind::reply([ 'response' => Wind::R_VALIDATION_ERROR, 'error' => Strings::get('@messages/'.Sentinel::errorName($code)) ]);
+						Wind::reply([ 'response' => Wind::R_VALIDATION_ERROR, 'error' => Strings::get('@messages.'.Sentinel::errorName($code)) ]);
 				}
 			}
 		}
@@ -416,7 +418,7 @@ Expr::register('sentinel::validate', function($args, $parts, $data)
 	$code = Sentinel::valid ($args->get(1), $args->get(2));
 
 	if ($code != Sentinel::ERR_NONE)
-		Wind::reply([ 'response' => Wind::R_VALIDATION_ERROR, 'error' => Strings::get('@messages/'.Sentinel::errorName($code)) ]);
+		Wind::reply([ 'response' => Wind::R_VALIDATION_ERROR, 'error' => Strings::get('@messages.'.Sentinel::errorName($code)) ]);
 
 	return null;
 });
@@ -426,7 +428,7 @@ Expr::register('sentinel::login', function($args, $parts, $data)
 	$code = Sentinel::login ($args->get(1), $args->get(2));
 
 	if ($code != Sentinel::ERR_NONE)
-		Wind::reply([ 'response' => Wind::R_VALIDATION_ERROR, 'error' => Strings::get('@messages/'.Sentinel::errorName($code)) ]);
+		Wind::reply([ 'response' => Wind::R_VALIDATION_ERROR, 'error' => Strings::get('@messages.'.Sentinel::errorName($code)) ]);
 
 	return null;
 });
@@ -439,7 +441,7 @@ Expr::register('sentinel::authorize', function($args, $parts, $data)
 		$code = Sentinel::authorize ($args->get(1), false);
 
 	if ($code != Sentinel::ERR_NONE)
-		Wind::reply([ 'response' => Wind::R_VALIDATION_ERROR, 'error' => Strings::get('@messages/'.Sentinel::errorName($code)) ]);
+		Wind::reply([ 'response' => Wind::R_VALIDATION_ERROR, 'error' => Strings::get('@messages.'.Sentinel::errorName($code)) ]);
 
 	return null;
 });
@@ -455,7 +457,7 @@ Expr::register('sentinel::login:forced', function($args, $parts, $data)
 	$code = Sentinel::login ($args->get(1));
 
 	if ($code != Sentinel::ERR_NONE)
-		Wind::reply([ 'response' => Wind::R_VALIDATION_ERROR, 'error' => Strings::get('@messages/'.Sentinel::errorName($code)) ]);
+		Wind::reply([ 'response' => Wind::R_VALIDATION_ERROR, 'error' => Strings::get('@messages.'.Sentinel::errorName($code)) ]);
 
 	return null;
 });
