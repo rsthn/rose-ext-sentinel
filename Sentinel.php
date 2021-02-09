@@ -84,7 +84,7 @@ class Sentinel
 				' SELECT DISTINCT p.privilege_id, p.name FROM ##privileges p'.
 				' INNER JOIN ##user_privileges u ON u.privilege_id=p.privilege_id'.
 				' WHERE u.user_id='.Session::$data->user->user_id
-			)->rows->map(function($i) use(&$both) { return $both ? $i : $i->name; });
+			)->map(function($i) use(&$both) { return $both ? $i : $i->name; });
 		}
 
 		return $conn->execQuery (
@@ -92,7 +92,7 @@ class Sentinel
 			' INNER JOIN ##user_privileges u ON u.privilege_id=p.privilege_id'.
 			' INNER JOIN ##users s ON s.is_active=1 AND s.user_id=u.user_id AND s.username='.Connection::escape($username).
 			' WHERE u.user_id='.Session::$data->user->user_id
-		)->rows->map(function($i) use(&$both) { return $both ? $i : $i->name; });
+		)->map(function($i) use(&$both) { return $both ? $i : $i->name; });
 	}
 
 	public static function status()

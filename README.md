@@ -8,7 +8,7 @@ This extension adds user authentication features to [Rose](https://github.com/rs
 composer require rsthn/rose-ext-sentinel
 ```
 
-
+<br/>&nbsp;
 # Database Structure
 
 The following tables are required by Sentinel. Note that any of the tables below can be extended if desired, the columns shown are the required minimum.
@@ -60,7 +60,7 @@ ENGINE=InnoDB CHARSET=utf8mb4 COLLATE=utf8mb4_bin;
 ```sql
 CREATE TABLE tokens
 (
-	token varchar(256) primary key,
+	token varchar(128) primary key,
 	user_id int unsigned not null,
 
 	is_authorized tinyint not null default 1,
@@ -73,6 +73,7 @@ ENGINE=InnoDB CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci AUTO_INCREMENT=1;
 ALTER TABLE tokens ADD index n_is_active (is_active);
 ```
 
+<br/>&nbsp;
 ## Configuration Section: `Sentinel`
 
 
@@ -84,6 +85,7 @@ ALTER TABLE tokens ADD index n_is_active (is_active);
 |master|`bool`|Indicates if privilege `'master'` should be added to all privilege checks.|`false`
 
 
+<br/>&nbsp;
 ## Expression Functions
 
 ### `sentinel::password` password:string
