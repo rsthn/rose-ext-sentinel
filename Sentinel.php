@@ -46,6 +46,7 @@ class Sentinel
 	public const ERR_NONE					= 0;
 	public const ERR_AUTHORIZATION			= 1;
 	public const ERR_CREDENTIALS			= 2;
+	public const ERR_BEARER_DISABLED		= 3;
 
 	private static $loadedSession = false;
 
@@ -58,6 +59,9 @@ class Sentinel
 
 			case Sentinel::ERR_CREDENTIALS:
 				return 'err_credentials';
+
+			case Sentinel::ERR_BEARER_DISABLED:
+				return 'err_bearer_disabled';
 		}
 
 		return 'err_none';
@@ -108,13 +112,13 @@ class Sentinel
 			{
 				$tmp = Text::toUpperCase($auth);
 
-				if (Text::startsWith($tmp, 'BEARER'))
+				if (Text::startsWith($tmp, 'BEARER') && Configuration::getInstance()->Sentinel->authBearer == 'true')
 				{
 					$code = self::authorize (Text::substring($auth, 7), false);
 					if ($code != Sentinel::ERR_NONE)
 						Wind::reply([ 'response' => Wind::R_VALIDATION_ERROR, 'error' => Strings::get('@messages.'.Sentinel::errorName($code)) ]);
 				}
-				else if (Text::startsWith($tmp, 'BASIC'))
+				else if (Text::startsWith($tmp, 'BASIC') && Configuration::getInstance()->Sentinel->authBasic == 'true')
 				{
 					$auth = base64_decode(Text::substring($auth, 6));
 					$i = strpos($auth, ':');
@@ -136,6 +140,9 @@ class Sentinel
 
 	public static function authorize (string $token, bool $openSession=true)
 	{
+		if (Configuration::getInstance()->Sentinel->authBearer != 'true')
+			return Sentinel::ERR_BEARER_DISABLED;
+
 		$data = Resources::getInstance()->Database->execAssoc (
 			'SELECT u.* FROM ##users u INNER JOIN ##tokens t ON t.is_active=1 AND t.is_authorized=1 AND t.user_id=u.user_id WHERE u.is_active=1 AND u.is_authorized=1 AND t.token='.Connection::escape($token)
 		);
