@@ -78,7 +78,7 @@ ALTER TABLE tokens ADD index n_is_active (is_active);
 
 <br/><br/>
 
-# Configuration Section: Sentinel
+# Configuration Section: "Sentinel"
 
 |Field|Type|Description|Default|
 |----|----|-----------|-------|
@@ -93,65 +93,55 @@ ALTER TABLE tokens ADD index n_is_active (is_active);
 
 # Expression Functions
 
-> #### `sentinel::password` password:string
+#### `sentinel::password` password:string
 
 Calculates the hash of the given password and returns it. The plain password gets the `Sentinel.suffix` and `Sentinel.prefix` configuration properties appended and prepended respectively before calculating its hash indicated by `Sentinel.hash`.
 
-<br/>
 
 #### `sentinel::status`
 
 Returns the authentication status (boolean) of the active session.
 
-<br/>
 
 #### `sentinel::auth-required`
 
 Fails with error code `Wind::R_NOT_AUTHENTICATED` if the active session is not authenticated.
 
-<br/>
 
 #### `sentinel::privilege-required` privileges:string
 
 Verifies if the active session has the specified privileges. Fails with `Wind::R_NOT_AUTHENTICATED` if the session has not been authenticated, or with `Wind::R_PRIVILEGE_REQUIRED` if the privilege requirements are not met.
 
-<br/>
 
 #### `sentinel::has-privilege` privileges:string
 
 Verifies if the active session has the specified privileges. Does not fail, returns boolean instead.
 
-<br/>
 
 #### `sentinel::level-required` level:int
 
 Verifies if the active session meets the specified minimum privilege level. The level is the privilege_id divided by 100. Fails with `Wind::R_NOT_AUTHENTICATED` if the session has not been authenticated, or with `Wind::R_PRIVILEGE_REQUIRED` if the privilege requirements are not met.
 
-<br/>
 
 #### `sentinel::has-level` level:int
 
 Verifies if the active session meets the specified minimum privilege level. The level is the privilege_id divided by 100. Does not fail, returns boolean instead.
 
-<br/>
 
 #### `sentinel::get-level` [username:string]
 
 Returns the privilege level of the active session user, or of the given user if `username` is provided.
 
-<br/>
 
 #### `sentinel::valid` username:string password:string
 
 Verifies if the specified credentials are valid, returns boolean.
 
-<br/>
 
 #### `sentinel::validate` username:string password:string
 
 Verifies if the given credentials are valid, fails with `Wind::R_VALIDATION_ERROR` and sets the `error` field to "strings.@messages.err_authorization" or "strings.@messages.err_credentials".
 
-<br/>
 
 #### `sentinel::login` username:string password:string
 
@@ -165,7 +155,6 @@ When using Apache, the HTTP_AUTHORIZATION header is not sent to the application,
 SetEnvIf Authorization "(.*)" HTTP_AUTHORIZATION=$1
 ```
 
-<br/>
 
 #### `sentinel::login-forced` user_id:int
 
@@ -173,7 +162,6 @@ Verifies if the user exist and forces a login without password. Fails with `Wind
 
 When successful, opens a session and loads the `user` field with the data of the user that has been authenticated.
 
-<br/>
 
 #### `sentinel::authorize` token:string [persistent:bool=false]
 
@@ -185,13 +173,11 @@ When successful, opens a session (if persistent is set to true), and loads the `
 
 Note that Sentinel will automatically run the authorization process (without creating a session) if the `Authorization: BEARER token` header is detected and `authBearer` is enabled in the configuration.
 
-<br/>
 
 #### `sentinel::logout`
 
 Removes authentication status from the active session.
 
-<br/>
 
 #### `sentinel::reload`
 
