@@ -93,67 +93,67 @@ ALTER TABLE tokens ADD index n_is_active (is_active);
 
 # Expression Functions
 
-## **sentinel::password** password:string
+> #### `sentinel::password` password:string
 
 Calculates the hash of the given password and returns it. The plain password gets the `Sentinel.suffix` and `Sentinel.prefix` configuration properties appended and prepended respectively before calculating its hash indicated by `Sentinel.hash`.
 
 <br/>
 
-## **sentinel::status**
+#### `sentinel::status`
 
 Returns the authentication status (boolean) of the active session.
 
 <br/>
 
-## **sentinel::auth-required**
+#### `sentinel::auth-required`
 
 Fails with error code `Wind::R_NOT_AUTHENTICATED` if the active session is not authenticated.
 
 <br/>
 
-## **sentinel::privilege-required** privileges:string
+#### `sentinel::privilege-required` privileges:string
 
 Verifies if the active session has the specified privileges. Fails with `Wind::R_NOT_AUTHENTICATED` if the session has not been authenticated, or with `Wind::R_PRIVILEGE_REQUIRED` if the privilege requirements are not met.
 
 <br/>
 
-## **sentinel::has-privilege** privileges:string
+#### `sentinel::has-privilege` privileges:string
 
 Verifies if the active session has the specified privileges. Does not fail, returns boolean instead.
 
 <br/>
 
-## **sentinel::level-required** level:int
+#### `sentinel::level-required` level:int
 
 Verifies if the active session meets the specified minimum privilege level. The level is the privilege_id divided by 100. Fails with `Wind::R_NOT_AUTHENTICATED` if the session has not been authenticated, or with `Wind::R_PRIVILEGE_REQUIRED` if the privilege requirements are not met.
 
 <br/>
 
-## **sentinel::has-level** level:int
+#### `sentinel::has-level` level:int
 
 Verifies if the active session meets the specified minimum privilege level. The level is the privilege_id divided by 100. Does not fail, returns boolean instead.
 
 <br/>
 
-## **sentinel::get-level** [username:string]
+#### `sentinel::get-level` [username:string]
 
 Returns the privilege level of the active session user, or of the given user if `username` is provided.
 
 <br/>
 
-## **sentinel::valid** username:string password:string
+#### `sentinel::valid` username:string password:string
 
 Verifies if the specified credentials are valid, returns boolean.
 
 <br/>
 
-## **sentinel::validate** username:string password:string
+#### `sentinel::validate` username:string password:string
 
 Verifies if the given credentials are valid, fails with `Wind::R_VALIDATION_ERROR` and sets the `error` field to "strings.@messages.err_authorization" or "strings.@messages.err_credentials".
 
 <br/>
 
-## **sentinel::login** username:string password:string
+#### `sentinel::login` username:string password:string
 
 Verifies if the given credentials are valid, fails with `Wind::R_VALIDATION_ERROR` and sets the `error` field to "strings.@messages.err_authorization" or "strings.@messages.err_credentials". When successful, opens a session and loads the `user` field with the data of the user that has been authenticated.
 
@@ -167,7 +167,7 @@ SetEnvIf Authorization "(.*)" HTTP_AUTHORIZATION=$1
 
 <br/>
 
-## **sentinel::login-forced** user_id:int
+#### `sentinel::login-forced` user_id:int
 
 Verifies if the user exist and forces a login without password. Fails with `Wind::R_VALIDATION_ERROR` and sets the `error` field to "strings.@messages.err_authorization" or "strings.@messages.err_credentials".
 
@@ -175,7 +175,7 @@ When successful, opens a session and loads the `user` field with the data of the
 
 <br/>
 
-## **sentinel::authorize** token:string [persistent:bool=false]
+#### `sentinel::authorize` token:string [persistent:bool=false]
 
 First checks that `authBearer` is set to true (enabled) in the Sentinel configuration, when disabled fails with `Wind::ERR_BEARER_DISABLED` and sets the `error` field to "strings.@messages.err_bearer_disabled".
 
@@ -187,13 +187,13 @@ Note that Sentinel will automatically run the authorization process (without cre
 
 <br/>
 
-## **sentinel::logout**
+#### `sentinel::logout`
 
 Removes authentication status from the active session.
 
 <br/>
 
-## **sentinel::reload**
+#### `sentinel::reload`
 
 Reloads the active session data and privileges from the database.
 
