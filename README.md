@@ -34,9 +34,7 @@ ALTER TABLE users ADD index n_is_active (is_active);
 CREATE TABLE privileges
 (
 	privilege_id int unsigned primary key auto_increment,
-
-	name varchar(128) not null unique key,
-	label varchar(512) not null default ''
+	name varchar(128) not null unique key
 )
 ENGINE=InnoDB CHARSET=utf8mb4 COLLATE=utf8mb4_bin AUTO_INCREMENT=1;
 ```
@@ -156,7 +154,7 @@ SetEnvIf Authorization "(.*)" HTTP_AUTHORIZATION=$1
 ```
 
 
-#### `sentinel::login-forced` user_id:int
+#### `sentinel::login:forced` user_id:int
 
 Verifies if the user exist and forces a login without password. Fails with `Wind::R_VALIDATION_ERROR` and sets the `error` field to "strings.@messages.err_authorization" or "strings.@messages.err_credentials".
 
