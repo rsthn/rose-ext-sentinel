@@ -379,7 +379,15 @@ Expr::register('sentinel::status', function($args, $parts, $data)
 Expr::register('sentinel::auth-required', function($args, $parts, $data)
 {
 	if (!Sentinel::status())
+	{
+		if (Configuration::getInstance()->Sentinel->authBasic == 'true')
+		{
+			Gateway::header('HTTP/1.1 401 Not Authenticated');
+			Gateway::header('WWW-Authenticate: Basic');
+		}
+
 		Wind::reply([ 'response' => Wind::R_NOT_AUTHENTICATED ]);
+	}
 
 	return null;
 });
@@ -387,7 +395,20 @@ Expr::register('sentinel::auth-required', function($args, $parts, $data)
 Expr::register('sentinel::privilege-required', function($args, $parts, $data)
 {
 	if (!Sentinel::verifyPrivileges($args->get(1)))
-		Wind::reply([ 'response' => Sentinel::status() ? Wind::R_PRIVILEGE_REQUIRED : Wind::R_NOT_AUTHENTICATED ]);
+	{
+		if (!Sentinel::status())
+		{
+			if (Configuration::getInstance()->Sentinel->authBasic == 'true')
+			{
+				Gateway::header('HTTP/1.1 401 Not Authenticated');
+				Gateway::header('WWW-Authenticate: Basic');
+			}
+
+			Wind::reply([ 'response' => Wind::R_NOT_AUTHENTICATED ]);
+		}
+		else
+			Wind::reply([ 'response' => Wind::R_PRIVILEGE_REQUIRED ]);
+	}
 
 	return null;
 });
@@ -400,7 +421,20 @@ Expr::register('sentinel::has-privilege', function($args, $parts, $data)
 Expr::register('sentinel::level-required', function($args, $parts, $data)
 {
 	if (!Sentinel::hasLevel ($args->get(1)))
-		Wind::reply([ 'response' => Sentinel::status() ? Wind::R_PRIVILEGE_REQUIRED : Wind::R_NOT_AUTHENTICATED ]);
+	{
+		if (!Sentinel::status())
+		{
+			if (Configuration::getInstance()->Sentinel->authBasic == 'true')
+			{
+				Gateway::header('HTTP/1.1 401 Not Authenticated');
+				Gateway::header('WWW-Authenticate: Basic');
+			}
+
+			Wind::reply([ 'response' => Wind::R_NOT_AUTHENTICATED ]);
+		}
+		else
+			Wind::reply([ 'response' => Wind::R_PRIVILEGE_REQUIRED ]);
+	}
 
 	return null;
 });
