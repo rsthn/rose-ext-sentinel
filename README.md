@@ -161,6 +161,11 @@ Verifies if the user exist and forces a login without password. Fails with `Wind
 When successful, opens a session and loads the `user` field with the data of the user that has been authenticated.
 
 
+#### `sentinel::login:manual` data:object
+
+Initializes a session and loads the specified data object into the `user` session field, effectively creating (manually) an authenticated session. If the data does not exist in the database, use only the `auth-required` and `logout` functions for access control, all others will fail.
+
+
 #### `sentinel::authorize` token:string [persistent:bool=false]
 
 First checks that `authBearer` is set to true (enabled) in the Sentinel configuration, when disabled fails with `Wind::ERR_BEARER_DISABLED` and sets the `error` field to "strings.@messages.err_bearer_disabled".
