@@ -36,7 +36,7 @@ CREATE TABLE privileges
 	privilege_id int unsigned primary key auto_increment,
 	name varchar(128) not null unique key
 )
-ENGINE=InnoDB CHARSET=utf8mb4 COLLATE=utf8mb4_bin AUTO_INCREMENT=1;
+ENGINE=InnoDB CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci AUTO_INCREMENT=1;
 ```
 
 ```sql
@@ -51,7 +51,7 @@ CREATE TABLE user_privileges
 	constraint foreign key (user_id) references users (user_id) on delete cascade,
 	constraint foreign key (privilege_id) references privileges (privilege_id) on delete cascade
 )
-ENGINE=InnoDB CHARSET=utf8mb4 COLLATE=utf8mb4_bin;
+ENGINE=InnoDB CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 ```
 
 <br/>
