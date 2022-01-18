@@ -1,7 +1,0 @@
---*
-@*
-vendor/
-.svn/
-*.log
-*.tmp
-deploy.js
