@@ -69,8 +69,8 @@ class Sentinel
 
 	public static function password ($value, $escape=false)
 	{
-		$conf = Configuration::getInstance();
-		$value = \hash($conf->Sentinel->hash ? $conf->Sentinel->hash : 'sha384', $conf->Sentinel->prefix . $value . $conf->Sentinel->suffix);
+		$conf = Configuration::getInstance()->Sentinel ?? new Map();
+		$value = \hash($conf->hash ? $conf->hash : 'sha384', $conf->prefix . $value . $conf->suffix);
 		if ($escape) $value = Connection::escape($value);
 		return $value;
 	}
@@ -101,6 +101,8 @@ class Sentinel
 
 	public static function status()
 	{
+		$conf = Configuration::getInstance()->Sentinel;
+
 		if (!self::$loadedSession && !Session::$sessionOpen)
 		{
 			Session::open(false);
@@ -112,13 +114,13 @@ class Sentinel
 			{
 				$tmp = Text::toUpperCase($auth);
 
-				if (Text::startsWith($tmp, 'BEARER') && Configuration::getInstance()->Sentinel->authBearer == 'true')
+				if (Text::startsWith($tmp, 'BEARER') && $conf && $conf->authBearer == 'true')
 				{
 					$code = self::authorize (Text::substring($auth, 7), false);
 					if ($code != Sentinel::ERR_NONE)
 						Wind::reply([ 'response' => Wind::R_VALIDATION_ERROR, 'error' => Strings::get('@messages.'.Sentinel::errorName($code)) ]);
 				}
-				else if (Text::startsWith($tmp, 'BASIC') && Configuration::getInstance()->Sentinel->authBasic == 'true')
+				else if (Text::startsWith($tmp, 'BASIC') && $conf && $conf->authBasic == 'true')
 				{
 					$auth = base64_decode(Text::substring($auth, 6));
 					$i = strpos($auth, ':');
@@ -140,7 +142,9 @@ class Sentinel
 
 	public static function authorize (string $token, bool $openSession=true)
 	{
-		if (Configuration::getInstance()->Sentinel->authBearer != 'true')
+		$conf = Configuration::getInstance()->Sentinel;
+
+		if ($conf && $conf->authBearer != 'true')
 			return Sentinel::ERR_BEARER_DISABLED;
 
 		$data = Resources::getInstance()->Database->execAssoc (
@@ -249,10 +253,10 @@ class Sentinel
 	{
 		if (!$privilege) return true;
 
-		$conf = Configuration::getInstance();
+		$conf = Configuration::getInstance()->Sentinel;
 		$conn = Resources::getInstance()->Database;
 
-		$privilege = Text::split(',', ($conf->Sentinel->master == 'true' ? 'master,' : '').$privilege)->map(function($i) { return Connection::escape($i); })->join(',');
+		$privilege = Text::split(',', ($conf && $conf->master == 'true' ? 'master,' : '').$privilege)->map(function($i) { return Connection::escape($i); })->join(',');
 
 		$count = 0;
 
@@ -309,9 +313,7 @@ class Sentinel
 	{
 		if (!$level) return true;
 
-		$conf = Configuration::getInstance();
 		$conn = Resources::getInstance()->Database;
-
 		$count = 0;
 
 		if ($username == null)
@@ -339,7 +341,6 @@ class Sentinel
 
 	public static function getLevel ($username=null)
 	{
-		$conf = Configuration::getInstance();
 		$conn = Resources::getInstance()->Database;
 
 		if ($username == null)
@@ -378,9 +379,11 @@ Expr::register('sentinel::status', function($args, $parts, $data)
 
 Expr::register('sentinel::auth-required', function($args, $parts, $data)
 {
+	$conf = Configuration::getInstance()->Sentinel;
+
 	if (!Sentinel::status())
 	{
-		if (Configuration::getInstance()->Sentinel->authBasic == 'true')
+		if ($conf && $conf->authBasic == 'true')
 		{
 			Gateway::header('HTTP/1.1 401 Not Authenticated');
 			Gateway::header('WWW-Authenticate: Basic');
@@ -394,11 +397,13 @@ Expr::register('sentinel::auth-required', function($args, $parts, $data)
 
 Expr::register('sentinel::privilege-required', function($args, $parts, $data)
 {
+	$conf = Configuration::getInstance()->Sentinel;
+
 	if (!Sentinel::verifyPrivileges($args->get(1)))
 	{
 		if (!Sentinel::status())
 		{
-			if (Configuration::getInstance()->Sentinel->authBasic == 'true')
+			if ($conf && $conf->authBasic == 'true')
 			{
 				Gateway::header('HTTP/1.1 401 Not Authenticated');
 				Gateway::header('WWW-Authenticate: Basic');
@@ -420,11 +425,13 @@ Expr::register('sentinel::has-privilege', function($args, $parts, $data)
 
 Expr::register('sentinel::level-required', function($args, $parts, $data)
 {
+	$conf = Configuration::getInstance()->Sentinel;
+
 	if (!Sentinel::hasLevel ($args->get(1)))
 	{
 		if (!Sentinel::status())
 		{
-			if (Configuration::getInstance()->Sentinel->authBasic == 'true')
+			if ($conf && $conf->authBasic == 'true')
 			{
 				Gateway::header('HTTP/1.1 401 Not Authenticated');
 				Gateway::header('WWW-Authenticate: Basic');
