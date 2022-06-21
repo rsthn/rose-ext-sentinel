@@ -125,14 +125,24 @@ class Sentinel
 					$auth = base64_decode(Text::substring($auth, 6));
 					$i = strpos($auth, ':');
 					if ($i == -1)
+					{
+						Gateway::header('HTTP/1.1 401 Not Authenticated');
+						Gateway::header('WWW-Authenticate: Basic');
+
 						Wind::reply([ 'response' => Wind::R_VALIDATION_ERROR, 'error' => Strings::get('@messages.'.Sentinel::errorName(Sentinel::ERR_CREDENTIALS)) ]);
+					}
 
 					$username = Text::substring($auth, 0, $i);
 					$password = Text::substring($auth, $i+1);
 
 					$code = self::login ($username, $password, false);
 					if ($code != Sentinel::ERR_NONE)
+					{
+						Gateway::header('HTTP/1.1 401 Not Authenticated');
+						Gateway::header('WWW-Authenticate: Basic');
+
 						Wind::reply([ 'response' => Wind::R_VALIDATION_ERROR, 'error' => Strings::get('@messages.'.Sentinel::errorName($code)) ]);
+					}
 				}
 			}
 		}
