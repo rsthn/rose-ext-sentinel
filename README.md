@@ -15,14 +15,14 @@ The following tables are required by Sentinel. Note that any of the tables below
 ```sql
 CREATE TABLE users
 (
-	user_id int unsigned primary key auto_increment,
-	created datetime default null,
+    user_id int unsigned primary key auto_increment,
+    created datetime default null,
 
-	is_authorized tinyint not null default 1,
-	is_active tinyint not null default 1,
+    is_authorized tinyint not null default 1,
+    is_active tinyint not null default 1,
 
-	username varchar(128) not null,
-	password varchar(96) not null
+    username varchar(256) not null,
+    password varchar(96) not null
 )
 ENGINE=InnoDB CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci AUTO_INCREMENT=1;
 
@@ -33,8 +33,8 @@ ALTER TABLE users ADD index n_is_active (is_active);
 ```sql
 CREATE TABLE privileges
 (
-	privilege_id int unsigned primary key auto_increment,
-	name varchar(128) not null unique key
+    privilege_id int unsigned primary key auto_increment,
+    name varchar(128) not null unique key
 )
 ENGINE=InnoDB CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci AUTO_INCREMENT=1;
 ```
@@ -42,14 +42,14 @@ ENGINE=InnoDB CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci AUTO_INCREMENT=1;
 ```sql
 CREATE TABLE user_privileges
 (
-	user_id int unsigned not null,
-	privilege_id int unsigned not null,
-	tag tinyint default 0,
+    user_id int unsigned not null,
+    privilege_id int unsigned not null,
+    primary key (user_id, privilege_id),
 
-	primary key (user_id, privilege_id),
+    tag tinyint default 0,
 
-	constraint foreign key (user_id) references users (user_id) on delete cascade,
-	constraint foreign key (privilege_id) references privileges (privilege_id) on delete cascade
+    constraint foreign key (user_id) references users (user_id) on delete cascade,
+    constraint foreign key (privilege_id) references privileges (privilege_id) on delete cascade
 )
 ENGINE=InnoDB CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 ```
@@ -61,18 +61,18 @@ And lastly, if authorization via access tokens is desired (by setting `authBeare
 ```sql
 CREATE TABLE tokens
 (
-	token_id int unsigned primary key auto_increment,
+    token_id int unsigned primary key auto_increment,
 
-	is_active tinyint not null default 1,
-	created datetime not null,
+    is_active tinyint not null default 1,
+    created datetime not null,
 
-	user_id int unsigned not null,
-	constraint foreign key (user_id) references users (user_id) on delete cascade,
+    user_id int unsigned not null,
+    constraint foreign key (user_id) references users (user_id) on delete cascade,
 
-	is_authorized tinyint not null default 1,
+    is_authorized tinyint not null default 1,
 
-	token varchar(128) not null unique,
-	name varchar(128) default null
+    token varchar(128) not null unique,
+    name varchar(128) default null
 )
 ENGINE=InnoDB CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci AUTO_INCREMENT=1;
 

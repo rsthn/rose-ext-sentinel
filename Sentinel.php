@@ -192,7 +192,7 @@ class Sentinel
 
 		if (!$data) return Sentinel::ERR_CREDENTIALS;
 
-		if ((int)$data->is_authorized == 0)
+		if ((int)$data->is_authorized == 0 && $password !== null)
 			return Sentinel::ERR_AUTHORIZATION;
 
 		if ($openSession)
