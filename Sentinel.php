@@ -135,7 +135,7 @@ class Sentinel
 					$username = Text::substring($auth, 0, $i);
 					$password = Text::substring($auth, $i+1);
 
-					$code = self::login ($username, $password, false);
+					$code = self::login ($username, $password, false, true);
 					if ($code != Sentinel::ERR_NONE)
 					{
 						Gateway::header('HTTP/1.1 401 Not Authenticated');
@@ -175,13 +175,22 @@ class Sentinel
 		return Sentinel::ERR_NONE;
 	}
 
-	public static function login (string $username, ?string $password=null, bool $openSession=true)
+	public static function login (string $username, ?string $password=null, bool $openSession=true, bool $allowToken=false)
 	{
 		if ($password !== null)
 		{
-			$data = Resources::getInstance()->Database->execAssoc (
-				'SELECT * FROM ##users WHERE is_active=1 AND username='.Connection::escape($username).' AND password='.Sentinel::password($password, true)
-			);
+			if ($allowToken && $username === 'token')
+			{
+				$data = Resources::getInstance()->Database->execAssoc (
+					'SELECT u.* FROM ##users u INNER JOIN ##tokens t ON t.user_id=u.user_id AND t.is_active=1 AND t.is_authorized=1 AND t.token='.Connection::escape($password).' WHERE u.is_active=1'
+				);
+			}
+			else
+			{
+				$data = Resources::getInstance()->Database->execAssoc (
+					'SELECT * FROM ##users WHERE is_active=1 AND username='.Connection::escape($username).' AND password='.Sentinel::password($password, true)
+				);
+			}
 		}
 		else
 		{
