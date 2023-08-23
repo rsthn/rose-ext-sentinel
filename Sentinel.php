@@ -313,7 +313,7 @@ class Sentinel
 		{
 			$groupFailed = false;
 
-			foreach (Text::split(' ', Text::trim($group))->__nativeArray as $privilege)
+			foreach (Text::split('&', Text::trim($group))->__nativeArray as $privilege)
 			{
 				if (!Sentinel::hasPrivilege (Text::trim($privilege), $username))
 				{
