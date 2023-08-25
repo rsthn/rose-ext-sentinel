@@ -13,43 +13,46 @@ composer require rsthn/rose-ext-sentinel
 The following tables are required by Sentinel. Note that any of the tables below can be extended if desired, the columns shown are the required minimum.
 
 ```sql
-CREATE TABLE users
+CREATE TABLE ##users
 (
     user_id int unsigned primary key auto_increment,
     created datetime default null,
 
-    is_authorized tinyint not null default 1,
     is_active tinyint not null default 1,
+    index idx_is_active (is_active),
+
+    is_authorized tinyint not null default 1,
 
     username varchar(256) not null,
+    index idx_username (is_active, username),
+
     password varchar(96) not null
 )
 ENGINE=InnoDB CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci AUTO_INCREMENT=1;
-
-ALTER TABLE users ADD index n_username (username);
-ALTER TABLE users ADD index n_is_active (is_active);
 ```
 
 ```sql
-CREATE TABLE privileges
+CREATE TABLE ##privileges
 (
-    privilege_id int unsigned primary key auto_increment,
+    privilege_id int unsigned primary key,
     name varchar(128) not null unique key
 )
-ENGINE=InnoDB CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci AUTO_INCREMENT=1;
+ENGINE=InnoDB CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 ```
 
 ```sql
-CREATE TABLE user_privileges
+CREATE TABLE ##user_privileges
 (
     user_id int unsigned not null,
+    foreign key (user_id) references ##users (user_id),
+
     privilege_id int unsigned not null,
+    foreign key (privilege_id) references ##privileges (privilege_id),
+
     primary key (user_id, privilege_id),
 
     tag tinyint default 0,
-
-    constraint foreign key (user_id) references users (user_id) on delete cascade,
-    constraint foreign key (privilege_id) references privileges (privilege_id) on delete cascade
+    index idx_tag (user_id, tag)
 )
 ENGINE=InnoDB CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 ```
@@ -59,24 +62,26 @@ ENGINE=InnoDB CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 And lastly, if authorization via access tokens is desired (by setting `authBearer` to true in the Sentinel configuration section), then add the following table to your database as well:
 
 ```sql
-CREATE TABLE tokens
+CREATE TABLE ##tokens
 (
     token_id int unsigned primary key auto_increment,
-
-    is_active tinyint not null default 1,
     created datetime not null,
 
+    is_active tinyint not null default 1,
+    index idx_is_active (is_active),
+
     user_id int unsigned not null,
-    constraint foreign key (user_id) references users (user_id) on delete cascade,
+    foreign key (user_id) references ##users (user_id),
+    index idx_username (is_active, user_id),
 
     is_authorized tinyint not null default 1,
 
     token varchar(128) not null unique,
-    name varchar(128) default null
+    index idx_token (is_active, token),
+
+    name varchar(128) not null
 )
 ENGINE=InnoDB CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci AUTO_INCREMENT=1;
-
-ALTER TABLE tokens ADD index n_is_active (is_active);
 ```
 
 <br/><br/>
