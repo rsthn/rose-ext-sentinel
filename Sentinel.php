@@ -158,7 +158,7 @@ class Sentinel
             return Sentinel::ERR_BEARER_DISABLED;
 
         $data = Resources::getInstance()->Database->execAssoc (
-            'SELECT u.*, t.is_authorized FROM ##users u INNER JOIN ##tokens t ON t.is_active=1 AND t.user_id=u.user_id WHERE u.is_active=1 AND u.is_authorized=1 AND t.token='.Connection::escape($token)
+            'SELECT u.*, t.token_id, t.is_authorized FROM ##users u INNER JOIN ##tokens t ON t.is_active=1 AND t.user_id=u.user_id WHERE u.is_active=1 AND u.is_authorized=1 AND t.token='.Connection::escape($token)
         );
 
         if (!$data) return Sentinel::ERR_CREDENTIALS;
@@ -400,7 +400,6 @@ Expr::register('sentinel::status', function($args, $parts, $data)
 Expr::register('sentinel::auth-required', function($args, $parts, $data)
 {
     $conf = Configuration::getInstance()->Sentinel;
-
     if (!Sentinel::status())
     {
         if ($conf && $conf->authBasic == 'true')
@@ -446,13 +445,11 @@ Expr::register('sentinel::has-privilege', function($args, $parts, $data)
 Expr::register('sentinel::level-required', function($args, $parts, $data)
 {
     $conf = Configuration::getInstance()->Sentinel;
-
     if (!Sentinel::hasLevel ($args->get(1)))
     {
         if (!Sentinel::status())
         {
-            if ($conf && $conf->authBasic == 'true')
-            {
+            if ($conf && $conf->authBasic == 'true') {
                 Gateway::header('HTTP/1.1 401 Not Authenticated');
                 Gateway::header('WWW-Authenticate: Basic');
             }
@@ -466,19 +463,21 @@ Expr::register('sentinel::level-required', function($args, $parts, $data)
     return null;
 });
 
-Expr::register('sentinel::has-level', function($args, $parts, $data)
-{
+Expr::register('sentinel::has-level', function($args, $parts, $data) {
     return Sentinel::hasLevel ($args->get(1));
 });
 
-Expr::register('sentinel::get-level', function($args, $parts, $data)
-{
+Expr::register('sentinel::get-level', function($args, $parts, $data) {
     return Sentinel::getLevel ($args->has(1) ? $args->get(1) : null);
 });
 
-Expr::register('sentinel::valid', function($args, $parts, $data)
-{
+Expr::register('sentinel::valid', function($args, $parts, $data) {
     return Sentinel::valid ($args->get(1), $args->get(2)) == Sentinel::ERR_NONE;
+});
+
+Expr::register('sentinel::token-id', function($args, $parts, $data) {
+    $user = Session::$data->user;
+    return !$user ? null : $user->token_id;
 });
 
 Expr::register('sentinel::validate', function($args, $parts, $data)
