@@ -480,23 +480,18 @@ Expr::register('sentinel::token-id', function($args, $parts, $data) {
     return !$user ? null : $user->token_id;
 });
 
-Expr::register('sentinel::validate', function($args, $parts, $data)
-{
+Expr::register('sentinel::validate', function($args, $parts, $data) {
     $code = Sentinel::valid ($args->get(1), $args->get(2));
-
     if ($code != Sentinel::ERR_NONE)
         Wind::reply([ 'response' => Wind::R_VALIDATION_ERROR, 'error' => Strings::get('@messages.'.Sentinel::errorName($code)) ]);
-
     return null;
 });
 
 Expr::register('sentinel::login', function($args, $parts, $data)
 {
     $code = Sentinel::login ($args->get(1), $args->get(2));
-
     if ($code != Sentinel::ERR_NONE)
         Wind::reply([ 'response' => Wind::R_VALIDATION_ERROR, 'error' => Strings::get('@messages.'.Sentinel::errorName($code)) ]);
-
     return null;
 });
 
@@ -513,30 +508,24 @@ Expr::register('sentinel::authorize', function($args, $parts, $data)
     return null;
 });
 
-Expr::register('sentinel::login:manual', function($args, $parts, $data)
-{
+Expr::register('sentinel::login:manual', function($args, $parts, $data) {
     Sentinel::manual ($args->get(1));
     return null;
 });
 
-Expr::register('sentinel::login:forced', function($args, $parts, $data)
-{
+Expr::register('sentinel::login:forced', function($args, $parts, $data) {
     $code = Sentinel::login ($args->get(1));
-
     if ($code != Sentinel::ERR_NONE)
         Wind::reply([ 'response' => Wind::R_VALIDATION_ERROR, 'error' => Strings::get('@messages.'.Sentinel::errorName($code)) ]);
-
     return null;
 });
 
-Expr::register('sentinel::logout', function($args, $parts, $data)
-{
+Expr::register('sentinel::logout', function($args, $parts, $data) {
     Sentinel::logout();
     return null;
 });
 
-Expr::register('sentinel::reload', function($args, $parts, $data)
-{
+Expr::register('sentinel::reload', function($args, $parts, $data) {
     Sentinel::reload();
     return null;
 });
