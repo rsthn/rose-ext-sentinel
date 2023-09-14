@@ -106,17 +106,20 @@ class Sentinel
         );
     }
 
+    /**
+     * Checks if the current user is logged in.
+     * @return True if the user is logged in, false otherwise.
+     */
     public static function status()
     {
         $conf = Configuration::getInstance()->Sentinel;
-
-        if (self::$loadedSession && Session::$sessionOpen)
+        if (self::$loadedSession)
             return Session::$data->user !== null ? true : false;
 
         // If the session is not open, we open it in shallow mode to check if the user is logged in.
         Session::open(false);
-        self::$loadedSession = true;
         Session::close(true);
+        self::$loadedSession = true;
 
         // Check for the authorization header, when present we check if the token is valid and if so we grant access.
         $auth = Gateway::getInstance()->server->HTTP_AUTHORIZATION;
@@ -139,7 +142,7 @@ class Sentinel
 
             $username = Text::substring($auth, 0, $i);
             $password = Text::substring($auth, $i+1);
-            $code = self::login ($username, $password, false, true);
+            $code = self::login($username, $password, false, true);
             if ($code != Sentinel::ERR_NONE) {
                 Gateway::header('HTTP/1.1 401 Not Authenticated');
                 Gateway::header('WWW-Authenticate: Basic');
@@ -173,8 +176,8 @@ class Sentinel
         if ((int)$data->is_authorized == 0)
             return Sentinel::ERR_AUTHORIZATION;
 
-        if ($openSession)
-            Session::open(true);
+        self::$loadedSession = true;
+        if ($openSession) Session::open(true);
 
         Session::$data->user = $data;
         $list = Sentinel::getPrivileges();
@@ -217,8 +220,8 @@ class Sentinel
         if ((int)$data->is_authorized == 0)
             return Sentinel::ERR_AUTHORIZATION;
 
-        if ($openSession)
-            Session::open(true);
+        self::$loadedSession = true;
+        if ($openSession) Session::open(true);
 
         Session::$data->user = $data;
         $list = Sentinel::getPrivileges();
@@ -232,7 +235,9 @@ class Sentinel
      */
     public static function manual (Map $data)
     {
+        self::$loadedSession = true;
         Session::open(true);
+
         Session::$data->user = $data;
         $data->privileges = $data->has('privileges') ? $data->get('privileges') : new Arry();
         $data->privilege_ids = $data->has('privilege_ids') ? $data->get('privilege_ids') : new Arry();
