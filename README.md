@@ -119,8 +119,6 @@ ENGINE=InnoDB CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 # Expression Functions
 
-<br/>
-
 ## `sentinel::password` \<password: _string_\>
 
 Calculates the hash of the given password and returns it. The plain password gets the `Sentinel.suffix` and `Sentinel.prefix` configuration properties appended and prepended respectively before calculating its hash indicated by `Sentinel.hash`.
