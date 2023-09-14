@@ -59,7 +59,7 @@ ENGINE=InnoDB CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 <br/>
 
-And lastly, if authorization via access tokens is desired (by setting `authBearer` to true in the Sentinel configuration section), then add the following table to your database as well:
+And lastly, if authorization via access tokens is desired (by setting `authBearer` to true in the Sentinel configuration section), then add the following tables to your database as well:
 
 ```sql
 CREATE TABLE ##tokens
@@ -84,6 +84,23 @@ CREATE TABLE ##tokens
 ENGINE=InnoDB CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci AUTO_INCREMENT=1;
 ```
 
+```sql
+CREATE TABLE ##token_privileges
+(
+    token_id int unsigned not null,
+    foreign key (token_id) references ##tokens (token_id),
+
+    privilege_id int unsigned not null,
+    foreign key (privilege_id) references ##privileges (privilege_id),
+
+    primary key (token_id, privilege_id),
+
+    tag tinyint default 0,
+    index idx_tag (token_id, tag)
+)
+ENGINE=InnoDB CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+```
+
 <br/><br/>
 
 # Configuration Section: "Sentinel"
@@ -91,67 +108,68 @@ ENGINE=InnoDB CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci AUTO_INCREMENT=1;
 |Field|Type|Description|Default|
 |----|----|-----------|-------|
 |hash|string|Name of the hash algorithm to use (passed directly to PHP's hash function).|sha384
-|prefix|string|Password prefix (salt).|Optional
-|suffix|string|Password suffix (salt).|Optional
-|master|bool|Indicates if privilege "master" should be added to all privilege checks.|false
-|authBearer|bool|When set to true, allows authentication via "Authorization: Bearer" header and enables the `sentinel::authorize` function.|false
-|authBasic|bool|When set to true, allows authentication via "Authorization: Basic" header.|false
+|prefix|string|Password prefix (salt).|-
+|suffix|string|Password suffix (salt).|-
+|master|bool|Indicates if privilege `master` should be added to all privilege checks.|false
+|authBearer|bool|When set to `true`, allows authentication via "Authorization: Bearer" header and enables the `sentinel::authorize` function.|false
+|authBasic|bool|When set to `true`, allows authentication via "Authorization: Basic" header and automatically sends `WWW-Authenticate` header along with HTTP status 401 when authentication has not been completed.|false
+|tokenPrivileges|bool|When set to `true`, privileges will be loaded from the `token_privileges` table (instead of `user_privileges`) when the user authenticates using a token.|false
 
 <br/><br/>
 
 # Expression Functions
 
-#### `sentinel::password` password:string
+## `sentinel::password` \<password: _string_\>
 
 Calculates the hash of the given password and returns it. The plain password gets the `Sentinel.suffix` and `Sentinel.prefix` configuration properties appended and prepended respectively before calculating its hash indicated by `Sentinel.hash`.
 
 
-#### `sentinel::status`
+## `sentinel::status`
 
 Returns the authentication status (boolean) of the active session.
 
 
-#### `sentinel::auth-required`
+## `sentinel::auth-required`
 
 Fails with error code `Wind::R_NOT_AUTHENTICATED` if the active session is not authenticated.
 
 
-#### `sentinel::privilege-required` privileges:string
+## `sentinel::privilege-required` \<privileges: _string_\>
 
 Verifies if the active session has the specified privileges. Fails with `Wind::R_NOT_AUTHENTICATED` if the session has not been authenticated, or with `Wind::R_PRIVILEGE_REQUIRED` if the privilege requirements are not met.
 
 
-#### `sentinel::has-privilege` privileges:string
+## `sentinel::has-privilege` \<privileges: _string_\>
 
 Verifies if the active session has the specified privileges. Does not fail, returns boolean instead.
 
 
-#### `sentinel::level-required` level:int
+## `sentinel::level-required` \<level: _int_\>
 
 Verifies if the active session meets the specified minimum privilege level. The level is the privilege_id divided by 100. Fails with `Wind::R_NOT_AUTHENTICATED` if the session has not been authenticated, or with `Wind::R_PRIVILEGE_REQUIRED` if the privilege requirements are not met.
 
 
-#### `sentinel::has-level` level:int
+## `sentinel::has-level` \<level: _int_\>
 
 Verifies if the active session meets the specified minimum privilege level. The level is the privilege_id divided by 100. Does not fail, returns boolean instead.
 
 
-#### `sentinel::get-level` [username:string]
+## `sentinel::get-level` [username: _string_]
 
 Returns the privilege level of the active session user, or of the given user if `username` is provided.
 
 
-#### `sentinel::valid` username:string password:string
+## `sentinel::valid` \<username: _string_\> \<password: _string_\>
 
 Verifies if the specified credentials are valid, returns boolean.
 
 
-#### `sentinel::validate` username:string password:string
+## `sentinel::validate` \<username: _string_\> \<password: _string_\>
 
 Verifies if the given credentials are valid, fails with `Wind::R_VALIDATION_ERROR` and sets the `error` field to "strings.@messages.err_authorization" or "strings.@messages.err_credentials".
 
 
-#### `sentinel::login` username:string password:string
+## `sentinel::login` \<username: _string_\> \<password: _string_\>
 
 Verifies if the given credentials are valid, fails with `Wind::R_VALIDATION_ERROR` and sets the `error` field to "strings.@messages.err_authorization" or "strings.@messages.err_credentials". When successful, opens a session and loads the `user` field with the data of the user that has been authenticated.
 
@@ -164,37 +182,39 @@ SetEnvIf Authorization "(.*)" HTTP_AUTHORIZATION=$1
 ```
 
 
-#### `sentinel::login:forced` user_id:int
+## `sentinel::token-id`
+
+Returns the `token_id` of the active session or `null` if the user is not authenticated or if the user authenticated by other means without a token.
+
+
+## `sentinel::login-user` \<user_id: _int_\>
 
 Verifies if the user exist and forces a login without password. Fails with `Wind::R_VALIDATION_ERROR` and sets the `error` field to "strings.@messages.err_authorization" or "strings.@messages.err_credentials".
 
 When successful, opens a session and loads the `user` field with the data of the user that has been authenticated.
 
 
-#### `sentinel::login:manual` data:object
+## `sentinel::login-manual` \<data: _object_\>
 
 Initializes a session and loads the specified data object into the `user` session field, effectively creating (manually) an authenticated session. If the data does not exist in the database, use only the `auth-required` and `logout` functions for access control, all others will fail.
 
 
-#### `sentinel::authorize` token:string [persistent:bool=false]
+## `sentinel::authorize` \<token: _string_\> [persistent: _bool_]
 
 First checks that `authBearer` is set to true (enabled) in the Sentinel configuration, when disabled fails with `Wind::ERR_BEARER_DISABLED` and sets the `error` field to "strings.@messages.err_bearer_disabled".
 
 After the initial check it verifies if the given token is valid and authorizes access. Fails with `Wind::R_VALIDATION_ERROR` and sets the `error` field to "strings.@messages.err_authorization".
 
-When successful, opens a session (if persistent is set to true), and loads the `user` field with the data of the user related to the token that just was authorized.
+When successful, opens a session if `persistent` is set to `true`, and loads the `user` field with the data of the user related to the token that just was authorized.
 
 Note that Sentinel will automatically run the authorization process (without creating a session) if the `Authorization: BEARER token` header is detected and `authBearer` is enabled in the configuration.
 
 
-#### `sentinel::logout`
+## `sentinel::logout`
 
-Removes authentication status from the active session.
+Removes authentication status from the active session. Note that this function does not remove the session itself, only the authentication data of the user. Use `session::destroy` to remove the session completely.
 
 
-#### `sentinel::reload`
+## `sentinel::reload`
 
 Reloads the active session data and privileges from the database.
-
-- Added 'sentinel::validate' to ensure the specified credentials are valid, fails with Wind::reply.
-- Added 'sentinel::valid' to verify if the specified credentials are valid, returns a boolean.
