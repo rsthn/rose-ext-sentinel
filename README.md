@@ -151,6 +151,20 @@ Verifies if the active session has the specified privileges. Fails with `Wind::R
 
 Verifies if the active session has the specified privileges. Does not fail, returns boolean instead.
 
+<br/>
+
+## `sentinel::case` [<privileges: _string_> \<result: _any_> ...] [\<default-result>]
+Checks the privileges of the current user against one of the case values. Returns the respective result or the default result if none matches. If no default result is specified, empty string is returned.
+
+Note: This is meant for values, not blocks. Just like the standard `case` in Violet.
+```lisp
+(sentinel::case
+    "admin"      "Has privileges admin"
+    "client"     "Has privileges client"
+    "x, y"       "Has privileges x or y"
+    "a & b & c"  "Has privileges a, b and c"
+)
+```
 
 <br/>
 

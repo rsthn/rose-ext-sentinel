@@ -503,6 +503,21 @@ Expr::register('sentinel::has-privilege', function($args, $parts, $data) {
     return Sentinel::verifyPrivileges($args->get(1), $args->{2});
 });
 
+Expr::register('_sentinel::case', function($parts, $data)
+{
+	$n = $parts->length();
+	for ($i = 1; $i < $n; $i += 2)
+	{
+		$case_value = (string)Expr::expand($parts->get($i), $data, 'arg');
+		if ($i == $n-1 && !($n&1)) return $case_value;
+
+		if (Sentinel::verifyPrivileges($case_value) || $case_value === 'default')
+			return Expr::expand($parts->get($i+1), $data, 'arg');
+	}
+
+    return '';
+});
+
 Expr::register('sentinel::level-required', function($args, $parts, $data)
 {
     $conf = Configuration::getInstance()->Sentinel;
