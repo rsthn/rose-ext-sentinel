@@ -1,26 +1,9 @@
 <?php
-/*
-**	Rose\Ext\Sentinel
-**
-**	Copyright (c) 2019-2023, RedStar Technologies, All rights reserved.
-**	https://rsthn.com/
-**
-**	THIS LIBRARY IS PROVIDED BY REDSTAR TECHNOLOGIES "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES,
-**	INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A 
-**	PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL REDSTAR TECHNOLOGIES BE LIABLE FOR ANY
-**	DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT 
-**	NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; 
-**	OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, 
-**	STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE
-**	USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-*/
 
 namespace Rose\Ext;
 
 use Rose\Errors\Error;
-
 use Rose\Data\Connection;
-
 use Rose\Configuration;
 use Rose\Session;
 use Rose\Gateway;
@@ -38,20 +21,27 @@ if (!Extensions::isInstalled('Wind'))
     return;
 
 /**
- * Sentinel Wind Extension.
+ * Sentinel extension.
  */
 class Sentinel
 {
+    /**
+     * Error codes.
+     */
     public const ERR_NONE					= 0;
     public const ERR_AUTHORIZATION			= 1;
     public const ERR_CREDENTIALS			= 2;
     public const ERR_BEARER_DISABLED		= 3;
 
+    /**
+     * Indicates if the session has been loaded.
+     */
     private static $loadedSession = false;
 
     /**
      * Returns the name of the error code.
-     * @param $code - Error code.
+     * @param {int} $code - Error code.
+     * @returns {string}
      */
     public static function errorName ($code) : string
     {
@@ -69,21 +59,22 @@ class Sentinel
 
     /**
      * Returns the password hash for the specified value.
-     * @param $value - Value to hash.
-     * @param $escape - If true, the value will be escaped.
-     * @return Hashed value.
+     * @param {string} $value - Value to hash.
+     * @param {bool} $escape - If true, the value will be escaped.
+     * @returns {string}
      */
     public static function password ($value, $escape=false) : string
     {
         $conf = Configuration::getInstance()->Sentinel ?? new Map();
         $value = \hash($conf->hash ? $conf->hash : 'sha384', $conf->prefix . $value . $conf->suffix);
         if ($escape) $value = Connection::escape($value);
+        
         return $value;
     }
 
     /**
      * Returns the privileges of the current user (or token privileges if `tokenPrivileges` is enabled).
-     * @return Array of privileges.
+     * @returns {string[]}
      */
     private static function getPrivileges()
     {
@@ -108,7 +99,7 @@ class Sentinel
 
     /**
      * Checks if the current user is logged in.
-     * @return True if the user is logged in, false otherwise.
+     * @returns {bool}
      */
     public static function status()
     {
@@ -155,9 +146,9 @@ class Sentinel
 
     /**
      * Checks if the specified token is valid and if so, authorizes the user for access.
-     * @param $token - Token to check.
-     * @param $openSession - If true, the session will be opened.
-     * @return Error code.
+     * @param {string} $token - Token to check.
+     * @param {bool} $openSession - If true, the session will be opened.
+     * @returns {int} Error code.
      */
     public static function authorize (string $token, bool $openSession=true)
     {
@@ -188,10 +179,11 @@ class Sentinel
 
     /**
      * Checks if the specified credentials are valid and if so, logs the user in.
-     * @param $username - Username.
-     * @param $password - Password (plain text).
-     * @param $openSession - If true, the session will be opened.
-     * @param $allowToken - If true, the password will be treated as a token when the username is 'token'.
+     * @param {string} $username - Username.
+     * @param {string|null} $password - Password (plain text).
+     * @param {bool} $openSession - If true, the session will be opened.
+     * @param {bool} $allowToken - If true, the password will be treated as a token when the username is 'token'.
+     * @returns {int} Error code.
      */
     public static function login (string $username, ?string $password=null, bool $openSession=true, bool $allowToken=false)
     {
@@ -232,6 +224,8 @@ class Sentinel
 
     /**
      * Logs the user in manually using the specified data.
+     * @param {Map} $data - User data.
+     * @returns {int} Error code.
      */
     public static function manual (Map $data)
     {
@@ -246,9 +240,9 @@ class Sentinel
 
     /**
      * Checks if the specified credentials are valid.
-     * @param $username - Username.
-     * @param $password - Password (plain text).
-     * @return Error code.
+     * @param {string} $username - Username.
+     * @param {string} $password - Password (plain text).
+     * @returns {int} Error code.
      */
     public static function valid (string $username, string $password)
     {
@@ -302,9 +296,9 @@ class Sentinel
 
     /**
      * Checks if the current user has one or more privileges.
-     * @param $privilege - Privileges separated by comma.
-     * @param $username - Username to check, if `null` the current user will be used.
-     * @return True if the user has the specified privileges, false otherwise.
+     * @param {string} $privilege - Privileges separated by comma.
+     * @param {string}null} $username - Username to check, if `null` the current user will be used.
+     * @returns {bool}
      */
     public static function hasPrivilege ($privilege, $username=null)
     {
@@ -348,9 +342,9 @@ class Sentinel
 
     /**
      * Checks if the current user has at least one privilege group.
-     * @param $value - Privilege sets separated by comma, AND-groups separated by ampersand (&).
-     * @param $username - Username to check, if `null` the current user will be used.
-     * @return True if the user has the specified privileges, false otherwise.
+     * @param {string} $value - Privilege sets separated by comma, AND-groups separated by ampersand (&).
+     * @param {string|null} $username - Username to check, if `null` the current user will be used.
+     * @returns {bool}
      */
     public static function verifyPrivileges ($value, $username=null)
     {
@@ -377,9 +371,9 @@ class Sentinel
 
     /**
      * Checks if the current user has at least the specified level.
-     * @param $level - Level to check.
-     * @param $username - Username to check, if `null` the current user will be used.
-     * @return True if the user has the specified level, false otherwise.
+     * @param {int} $level - Level to check.
+     * @param {string|null} $username - Username to check, if `null` the current user will be used.
+     * @returns {bool}
      */
     public static function hasLevel ($level, $username=null)
     {
@@ -421,8 +415,8 @@ class Sentinel
 
     /**
      * Returns the level of the current user.
-     * @param $username - Username to check, if `null` the current user will be used.
-     * @return Level of the user.
+     * @param {string|null} $username - Username to check, if `null` the current user will be used.
+     * @returns {int}
      */
     public static function getLevel ($username=null)
     {
