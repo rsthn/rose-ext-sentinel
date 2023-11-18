@@ -13,48 +13,45 @@ composer require rsthn/rose-ext-sentinel
 The following tables are required by Sentinel. Note that any of the tables below can be extended if desired, the columns shown are the required minimum.
 
 ```sql
-CREATE TABLE ##users
+CREATE TABLE users
 (
-    user_id int unsigned primary key auto_increment,
-    created datetime default null,
-
-    is_active tinyint not null default 1,
-    index idx_is_active (is_active),
-
-    is_authorized tinyint not null default 1,
-
-    username varchar(256) not null,
-    index idx_username (is_active, username),
-
-    password varchar(96) not null
+    user_id INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    created_at TIMESTAMP NOT NULL,
+    deleted_at TIMESTAMP DEFAULT NULL,
+    blocked_at TIMESTAMP DEFAULT NULL,
+    username VARCHAR(256) NOT NULL,
+    password VARCHAR(96) NOT NULL
 )
-ENGINE=InnoDB CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci AUTO_INCREMENT=1;
+ENGINE=InnoDB CHARSET=utf8mb4 COLLATE=utf8_unicode_ci AUTO_INCREMENT=1;
+
+CREATE INDEX users_created_at ON users (created_at);
+CREATE INDEX users_deleted_at ON users (deleted_at);
+CREATE INDEX users_blocked_at ON users (blocked_at);
+CREATE INDEX users_username ON users (username, deleted_at);
 ```
 
 ```sql
-CREATE TABLE ##privileges
+CREATE TABLE privileges
 (
-    privilege_id int unsigned primary key,
-    name varchar(128) not null unique key
+    privilege_id INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    name VARCHAR(128) NOT NULL UNIQUE
 )
-ENGINE=InnoDB CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+ENGINE=InnoDB CHARSET=utf8mb4 COLLATE=utf8_unicode_ci;
 ```
 
 ```sql
-CREATE TABLE ##user_privileges
+CREATE TABLE user_privileges
 (
-    user_id int unsigned not null,
-    foreign key (user_id) references ##users (user_id),
-
-    privilege_id int unsigned not null,
-    foreign key (privilege_id) references ##privileges (privilege_id),
-
-    primary key (user_id, privilege_id),
-
-    tag tinyint default 0,
-    index idx_tag (user_id, tag)
+    user_id INT NOT NULL,
+    privilege_id INT NOT NULL,
+    flag INT DEFAULT 0,
+    PRIMARY KEY (user_id, privilege_id),
+    FOREIGN KEY (user_id) REFERENCES users (user_id),
+    FOREIGN KEY (privilege_id) REFERENCES privileges (privilege_id)
 )
-ENGINE=InnoDB CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+ENGINE=InnoDB CHARSET=utf8mb4 COLLATE=utf8_unicode_ci;
+
+CREATE INDEX user_privileges_flag ON user_privileges (user_id, flag);
 ```
 
 <br/>
@@ -62,43 +59,36 @@ ENGINE=InnoDB CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 And lastly, if authorization via access tokens is desired (by setting `authBearer` to true in the Sentinel configuration section), then add the following tables to your database as well:
 
 ```sql
-CREATE TABLE ##tokens
+CREATE TABLE tokens
 (
-    token_id int unsigned primary key auto_increment,
-    created datetime not null,
-
-    is_active tinyint not null default 1,
-    index idx_is_active (is_active),
-
-    user_id int unsigned not null,
-    foreign key (user_id) references ##users (user_id),
-    index idx_username (is_active, user_id),
-
-    is_authorized tinyint not null default 1,
-
-    token varchar(128) not null unique,
-    index idx_token (is_active, token),
-
-    name varchar(128) not null
+    token_id INT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
+    created_at TIMESTAMP NOT NULL,
+    deleted_at TIMESTAMP DEFAULT NULL,
+    blocked_at TIMESTAMP DEFAULT NULL,
+    user_id INT UNSIGNED NOT NULL,
+    token VARCHAR(128) NOT NULL UNIQUE,
+    name VARCHAR(128) NOT NULL,
+    FOREIGN KEY (user_id) REFERENCES users (user_id)
 )
-ENGINE=InnoDB CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci AUTO_INCREMENT=1;
+ENGINE=InnoDB CHARSET=utf8mb4 COLLATE=utf8_unicode_ci AUTO_INCREMENT=1;
+
+CREATE INDEX tokens_user_id ON tokens (user_id, deleted_at);
+CREATE INDEX tokens_token ON tokens (token, deleted_at);
 ```
 
 ```sql
-CREATE TABLE ##token_privileges
+CREATE TABLE token_privileges
 (
-    token_id int unsigned not null,
-    foreign key (token_id) references ##tokens (token_id),
-
-    privilege_id int unsigned not null,
-    foreign key (privilege_id) references ##privileges (privilege_id),
-
-    primary key (token_id, privilege_id),
-
-    tag tinyint default 0,
-    index idx_tag (token_id, tag)
+    token_id INT NOT NULL,
+    privilege_id INT NOT NULL,
+    flag INT DEFAULT 0,
+    PRIMARY KEY (token_id, privilege_id),
+    FOREIGN KEY (token_id) REFERENCES tokens (token_id),
+    FOREIGN KEY (privilege_id) REFERENCES privileges (privilege_id)
 )
-ENGINE=InnoDB CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+ENGINE=InnoDB CHARSET=utf8mb4 COLLATE=utf8_unicode_ci;
+
+CREATE INDEX token_privileges_flag ON token_privileges (token_id, flag);
 ```
 
 <br/><br/>

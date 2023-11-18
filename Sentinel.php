@@ -85,15 +85,15 @@ class Sentinel
         if ($conf && $conf->tokenPrivileges === 'true' && Session::$data->user->token_id) {
             return $conn->execQuery(
                 'SELECT DISTINCT p.privilege_id, p.name FROM ##privileges p '.
-                'INNER JOIN ##token_privileges t ON t.privilege_id=p.privilege_id '.
-                'WHERE t.token_id='.Session::$data->user->token_id
+                'INNER JOIN ##token_privileges t ON t.privilege_id = p.privilege_id '.
+                'WHERE t.token_id = '.Session::$data->user->token_id
             );
         }
 
         return $conn->execQuery(
             'SELECT DISTINCT p.privilege_id, p.name FROM ##privileges p '.
-            'INNER JOIN ##user_privileges u ON u.privilege_id=p.privilege_id '.
-            'WHERE u.user_id='.Session::$data->user->user_id
+            'INNER JOIN ##user_privileges u ON u.privilege_id = p.privilege_id '.
+            'WHERE u.user_id = '.Session::$data->user->user_id
         );
     }
 
@@ -157,14 +157,14 @@ class Sentinel
             return Sentinel::ERR_BEARER_DISABLED;
 
         $data = Resources::getInstance()->Database->execAssoc(
-            'SELECT u.*, t.token_id, LEAST(u.is_authorized, t.is_authorized) is_authorized '.
+            'SELECT u.*, t.token_id, COALESCE(u.blocked_at, t.blocked_at) blocked_at '.
             'FROM ##users u '.
-            'INNER JOIN ##tokens t ON t.is_active=1 AND t.user_id=u.user_id '.
-            'WHERE u.is_active=1 AND t.token='.Connection::escape($token)
+            'INNER JOIN ##tokens t ON t.deleted_at IS NULL AND t.user_id = u.user_id '.
+            'WHERE u.deleted_at IS NULL AND t.token = '.Connection::escape($token)
         );
         if (!$data) return Sentinel::ERR_CREDENTIALS;
 
-        if ((int)$data->is_authorized == 0)
+        if ($data->blocked_at)
             return Sentinel::ERR_AUTHORIZATION;
 
         self::$loadedSession = true;
@@ -190,26 +190,26 @@ class Sentinel
         if ($password !== null) {
             if ($allowToken && $username === 'token') {
                 $data = Resources::getInstance()->Database->execAssoc (
-                    'SELECT u.*, t.token_id, LEAST(u.is_authorized, t.is_authorized) is_authorized '.
+                    'SELECT u.*, t.token_id, COALESCE(u.blocked_at, t.blocked_at) blocked_at '.
                     'FROM ##users u '.
-                    'INNER JOIN ##tokens t ON t.is_active=1 AND t.user_id=u.user_id '.
-                    'WHERE u.is_active=1 AND t.token='.Connection::escape($password)
+                    'INNER JOIN ##tokens t ON t.blocked_at IS NULL AND t.user_id = u.user_id '.
+                    'WHERE u.deleted_at IS NULL AND t.token = '.Connection::escape($password)
                 );
             } else {
                 $data = Resources::getInstance()->Database->execAssoc (
                     'SELECT * FROM ##users '.
-                    'WHERE is_active=1 AND username='.Connection::escape($username).' AND password='.Sentinel::password($password, true)
+                    'WHERE deleted_at IS NULL AND username = '.Connection::escape($username).' AND password = '.Sentinel::password($password, true)
                 );
             }
         } else {
             $data = Resources::getInstance()->Database->execAssoc (
-                'SELECT * FROM ##users WHERE is_active=1 AND user_id='.Connection::escape($username)
+                'SELECT * FROM ##users WHERE deleted_at IS NULL AND user_id = '.Connection::escape($username)
             );
         }
 
         if (!$data) return Sentinel::ERR_CREDENTIALS;
 
-        if ((int)$data->is_authorized == 0)
+        if ($data->blocked_at)
             return Sentinel::ERR_AUTHORIZATION;
 
         self::$loadedSession = true;
@@ -247,11 +247,11 @@ class Sentinel
     public static function valid (string $username, string $password)
     {
         $data = Resources::getInstance()->Database->execAssoc(
-            'SELECT * FROM ##users WHERE is_active=1 AND username='.Connection::escape($username).' AND password='.Sentinel::password($password, true)
+            'SELECT * FROM ##users WHERE deleted_at IS NULL AND username = '.Connection::escape($username).' AND password = '.Sentinel::password($password, true)
         );
         if (!$data) return Sentinel::ERR_CREDENTIALS;
 
-        if ((int)$data->is_authorized == 0)
+        if ($data->blocked_at)
             return Sentinel::ERR_AUTHORIZATION;
 
         return Sentinel::ERR_NONE;
@@ -275,14 +275,14 @@ class Sentinel
 
         if (Session::$data->user->token_id) {
             $data = Resources::getInstance()->Database->execAssoc (
-                'SELECT u.*, t.token_id, LEAST(u.is_authorized, t.is_authorized) is_authorized '.
+                'SELECT u.*, t.token_id, COALESCE(u.blocked_at, t.blocked_at) blocked_at '.
                 'FROM ##users u '.
-                'INNER JOIN ##tokens t ON t.is_active=1 AND t.user_id=u.user_id '.
-                'WHERE u.is_active=1 AND t.token_id='.Connection::escape(Session::$data->user->token_id)
+                'INNER JOIN ##tokens t ON t.blocked_at IS NULL AND t.user_id = u.user_id '.
+                'WHERE u.deleted_at IS NULL AND t.token_id = '.Connection::escape(Session::$data->user->token_id)
             );
         } else {
             $data = Resources::getInstance()->Database->execAssoc (
-                'SELECT * FROM ##users WHERE is_active=1 AND user_id='.Connection::escape(Session::$data->user->user_id)
+                'SELECT * FROM ##users WHERE deleted_at IS NULL AND user_id = '.Connection::escape(Session::$data->user->user_id)
             );
         }
 
@@ -313,8 +313,8 @@ class Sentinel
         if ($username !== null) {
             $count = $conn->execScalar (
                 ' SELECT COUNT(*) FROM ##privileges p '.
-                ' INNER JOIN ##user_privileges up ON up.privilege_id=p.privilege_id'.
-                ' INNER JOIN ##users u ON u.is_active=1 AND u.username='.Connection::escape($username).' AND up.user_id=u.user_id'.
+                ' INNER JOIN ##user_privileges up ON up.privilege_id = p.privilege_id'.
+                ' INNER JOIN ##users u ON u.deleted_at IS NULL AND u.username = '.Connection::escape($username).' AND up.user_id = u.user_id'.
                 ' WHERE p.name IN ('.$privilege.')'
             );
             return $count != 0 ? true : false;
@@ -325,15 +325,15 @@ class Sentinel
         if ($conf && $conf->tokenPrivileges === 'true' && Session::$data->user->token_id) {
             $count = $conn->execScalar (
                 ' SELECT COUNT(*) FROM ##privileges p '.
-                ' INNER JOIN ##token_privileges tp ON tp.privilege_id=p.privilege_id'.
-                ' WHERE tp.token_id='.Session::$data->user->token_id.' AND p.name IN ('.$privilege.')'
+                ' INNER JOIN ##token_privileges tp ON tp.privilege_id = p.privilege_id'.
+                ' WHERE tp.token_id = '.Session::$data->user->token_id.' AND p.name IN ('.$privilege.')'
             );
         }
         else {
             $count = $conn->execScalar (
                 ' SELECT COUNT(*) FROM ##privileges p '.
-                ' INNER JOIN ##user_privileges up ON up.privilege_id=p.privilege_id'.
-                ' WHERE up.user_id='.Session::$data->user->user_id.' AND p.name IN ('.$privilege.')'
+                ' INNER JOIN ##user_privileges up ON up.privilege_id = p.privilege_id'.
+                ' WHERE up.user_id = '.Session::$data->user->user_id.' AND p.name IN ('.$privilege.')'
             );
         }
 
@@ -386,8 +386,8 @@ class Sentinel
         if ($username !== null) {
             $count = $conn->execScalar (
                 ' SELECT COUNT(*) FROM ##privileges p '.
-                ' INNER JOIN ##user_privileges up ON up.privilege_id=p.privilege_id'.
-                ' INNER JOIN ##users u ON u.is_active=1 AND u.username='.Connection::escape($username).' AND up.user_id=u.user_id'.
+                ' INNER JOIN ##user_privileges up ON up.privilege_id = p.privilege_id'.
+                ' INNER JOIN ##users u ON u.deleted_at IS NULL AND u.username='.Connection::escape($username).' AND up.user_id = u.user_id'.
                 ' WHERE FLOOR(p.privilege_id/100) >= '.$level
             );
             return $count != 0 ? true : false;
@@ -398,15 +398,15 @@ class Sentinel
         if ($conf && $conf->tokenPrivileges === 'true' && Session::$data->user->token_id) {
             $count = $conn->execScalar (
                 ' SELECT COUNT(*) FROM ##privileges p '.
-                ' INNER JOIN ##token_privileges tp ON tp.privilege_id=p.privilege_id'.
-                ' WHERE tp.token_id='.Session::$data->user->token_id.' AND FLOOR(p.privilege_id/100) >= '.$level
+                ' INNER JOIN ##token_privileges tp ON tp.privilege_id = p.privilege_id'.
+                ' WHERE tp.token_id = '.Session::$data->user->token_id.' AND FLOOR(p.privilege_id/100) >= '.$level
             );
         }
         else {
             $count = $conn->execScalar (
                 ' SELECT COUNT(*) FROM ##privileges p '.
-                ' INNER JOIN ##user_privileges up ON up.privilege_id=p.privilege_id'.
-                ' WHERE up.user_id='.Session::$data->user->user_id.' AND FLOOR(p.privilege_id/100) >= '.$level
+                ' INNER JOIN ##user_privileges up ON up.privilege_id = p.privilege_id'.
+                ' WHERE up.user_id = '.Session::$data->user->user_id.' AND FLOOR(p.privilege_id/100) >= '.$level
             );
         }
 
@@ -426,8 +426,8 @@ class Sentinel
         if ($username !== null) {
             $level = $conn->execScalar (
                 ' SELECT MAX(FLOOR(p.privilege_id/100)) FROM ##privileges p '.
-                ' INNER JOIN ##user_privileges up ON up.privilege_id=p.privilege_id'.
-                ' INNER JOIN ##users u ON u.is_active=1 AND u.username='.Connection::escape($username).' AND up.user_id=u.user_id'
+                ' INNER JOIN ##user_privileges up ON up.privilege_id = p.privilege_id'.
+                ' INNER JOIN ##users u ON u.deleted_at IS NULL AND u.username = '.Connection::escape($username).' AND up.user_id = u.user_id'
             );
             return (int)$level;
         }
@@ -437,15 +437,15 @@ class Sentinel
         if ($conf && $conf->tokenPrivileges === 'true' && Session::$data->user->token_id) {
             $level = $conn->execScalar (
                 ' SELECT MAX(FLOOR(p.privilege_id/100)) FROM ##privileges p '.
-                ' INNER JOIN ##token_privileges tp ON tp.privilege_id=p.privilege_id'.
-                ' WHERE tp.token_id='.Session::$data->user->token_id
+                ' INNER JOIN ##token_privileges tp ON tp.privilege_id = p.privilege_id'.
+                ' WHERE tp.token_id = '.Session::$data->user->token_id
             );
         }
         else {
             $level = $conn->execScalar (
                 ' SELECT MAX(FLOOR(p.privilege_id/100)) FROM ##privileges p '.
-                ' INNER JOIN ##user_privileges up ON up.privilege_id=p.privilege_id'.
-                ' WHERE up.user_id='.Session::$data->user->user_id
+                ' INNER JOIN ##user_privileges up ON up.privilege_id = p.privilege_id'.
+                ' WHERE up.user_id = '.Session::$data->user->user_id
             );
         }
 

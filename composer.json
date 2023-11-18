@@ -1,7 +1,6 @@
 {
     "name": "rsthn/rose-ext-sentinel",
     "description": "Sentinel Authentication Extension",
-    "version": "1.0.38",
     "type": "rose-extension",
     "license": "Apache-2.0",
     "authors": [
