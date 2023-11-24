@@ -16,9 +16,9 @@ The following tables are required by Sentinel. Note that any of the tables below
 CREATE TABLE users
 (
     user_id INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
-    created_at TIMESTAMP NOT NULL,
-    deleted_at TIMESTAMP DEFAULT NULL,
-    blocked_at TIMESTAMP DEFAULT NULL,
+    created_at DATETIME NOT NULL,
+    deleted_at DATETIME DEFAULT NULL,
+    blocked_at DATETIME DEFAULT NULL,
     username VARCHAR(256) NOT NULL,
     password VARCHAR(96) NOT NULL
 )
@@ -62,9 +62,9 @@ And lastly, if authorization via access tokens is desired (by setting `authBeare
 CREATE TABLE tokens
 (
     token_id INT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
-    created_at TIMESTAMP NOT NULL,
-    deleted_at TIMESTAMP DEFAULT NULL,
-    blocked_at TIMESTAMP DEFAULT NULL,
+    created_at DATETIME NOT NULL,
+    deleted_at DATETIME DEFAULT NULL,
+    blocked_at DATETIME DEFAULT NULL,
     user_id INT UNSIGNED NOT NULL,
     token VARCHAR(128) NOT NULL UNIQUE,
     name VARCHAR(128) NOT NULL,
