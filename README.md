@@ -61,11 +61,11 @@ And lastly, if authorization via access tokens is desired (by setting `authBeare
 ```sql
 CREATE TABLE tokens
 (
-    token_id INT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
+    token_id INT PRIMARY KEY AUTO_INCREMENT,
     created_at DATETIME NOT NULL,
     deleted_at DATETIME DEFAULT NULL,
     blocked_at DATETIME DEFAULT NULL,
-    user_id INT UNSIGNED NOT NULL,
+    user_id INT NOT NULL,
     token VARCHAR(128) NOT NULL UNIQUE,
     name VARCHAR(128) NOT NULL,
     FOREIGN KEY (user_id) REFERENCES users (user_id)
