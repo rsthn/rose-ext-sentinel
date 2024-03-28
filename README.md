@@ -54,9 +54,9 @@ ENGINE=InnoDB CHARSET=utf8mb4 COLLATE=utf8_unicode_ci;
 CREATE INDEX user_privileges_flag ON user_privileges (user_id, flag);
 ```
 
-<br/>
+### Token Authorization
 
-And lastly, if authorization via access tokens is desired (by setting `authBearer` to true in the Sentinel configuration section), then add the following tables to your database as well:
+Whenever authorization via access tokens is desired (by setting `authBearer` to true in the Sentinel configuration section), then add the following tables to your database as well:
 
 ```sql
 CREATE TABLE tokens
@@ -89,6 +89,26 @@ CREATE TABLE token_privileges
 ENGINE=InnoDB CHARSET=utf8mb4 COLLATE=utf8_unicode_ci;
 
 CREATE INDEX token_privileges_flag ON token_privileges (token_id, flag);
+```
+
+### Identifier Banning
+
+Sentinel include support to blacklist identifiers that are trying to brute force the system. To use this feature check the `sentinel::access-required` and `sentinel::access-denied` functions.
+
+The following table is required for this feature:
+
+```sql
+CREATE TABLE suspicious_identifiers
+(
+    identifier VARCHAR(128) NOT NULL,
+    PRIMARY KEY (identifier),
+    next_attempt_at DATETIME DEFAULT NULL,
+    last_attempt_at DATETIME NOT NULL,
+    count_failed INT DEFAULT 1,
+    count_blocked INT DEFAULT 0,
+    is_banned INT DEFAULT 0
+)
+ENGINE=InnoDB CHARSET=utf8mb4 COLLATE=utf8_unicode_ci AUTO_INCREMENT=1;
 ```
 
 <br/><br/>
