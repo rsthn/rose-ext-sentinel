@@ -10,6 +10,7 @@ use Rose\Gateway;
 use Rose\Strings;
 use Rose\Resources;
 use Rose\Extensions;
+use Rose\DateTime;
 use Rose\Text;
 use Rose\Expr;
 use Rose\Map;
@@ -454,15 +455,15 @@ class Sentinel
 };
 
 /* ****************************************************************************** */
-Expr::register('sentinel::password', function($args, $parts, $data) {
+Expr::register('sentinel::password', function($args) {
     return Sentinel::password($args->get(1));
 });
 
-Expr::register('sentinel::status', function($args, $parts, $data) {
+Expr::register('sentinel::status', function($args) {
     return Sentinel::status();
 });
 
-Expr::register('sentinel::auth-required', function($args, $parts, $data)
+Expr::register('sentinel::auth-required', function($args)
 {
     $conf = Configuration::getInstance()->Sentinel;
     if (Sentinel::status()) return null;
@@ -476,7 +477,7 @@ Expr::register('sentinel::auth-required', function($args, $parts, $data)
     return null;
 });
 
-Expr::register('sentinel::privilege-required', function($args, $parts, $data)
+Expr::register('sentinel::privilege-required', function($args)
 {
     $conf = Configuration::getInstance()->Sentinel;
     if (Sentinel::verifyPrivileges($args->get(1))) return null;
@@ -493,7 +494,7 @@ Expr::register('sentinel::privilege-required', function($args, $parts, $data)
     return null;
 });
 
-Expr::register('sentinel::has-privilege', function($args, $parts, $data) {
+Expr::register('sentinel::has-privilege', function($args) {
     return Sentinel::verifyPrivileges($args->get(1), $args->{2});
 });
 
@@ -512,7 +513,7 @@ Expr::register('_sentinel::case', function($parts, $data)
     return '';
 });
 
-Expr::register('sentinel::level-required', function($args, $parts, $data)
+Expr::register('sentinel::level-required', function($args)
 {
     $conf = Configuration::getInstance()->Sentinel;
     if (Sentinel::hasLevel ($args->get(1))) return null;
@@ -529,31 +530,31 @@ Expr::register('sentinel::level-required', function($args, $parts, $data)
     return null;
 });
 
-Expr::register('sentinel::has-level', function($args, $parts, $data) {
+Expr::register('sentinel::has-level', function($args) {
     return Sentinel::hasLevel ($args->get(1));
 });
 
-Expr::register('sentinel::get-level', function($args, $parts, $data) {
+Expr::register('sentinel::get-level', function($args) {
     return Sentinel::getLevel ($args->has(1) ? $args->get(1) : null);
 });
 
-Expr::register('sentinel::valid', function($args, $parts, $data) {
+Expr::register('sentinel::valid', function($args) {
     return Sentinel::valid ($args->get(1), $args->get(2)) == Sentinel::ERR_NONE;
 });
 
-Expr::register('sentinel::token-id', function($args, $parts, $data) {
+Expr::register('sentinel::token-id', function($args) {
     $user = Session::$data->user;
     return !$user ? null : $user->token_id;
 });
 
-Expr::register('sentinel::validate', function($args, $parts, $data) {
+Expr::register('sentinel::validate', function($args) {
     $code = Sentinel::valid ($args->get(1), $args->get(2));
     if ($code != Sentinel::ERR_NONE)
         Wind::reply([ 'response' => Wind::R_VALIDATION_ERROR, 'error' => Strings::get('@messages.'.Sentinel::errorName($code)) ]);
     return null;
 });
 
-Expr::register('sentinel::login', function($args, $parts, $data)
+Expr::register('sentinel::login', function($args)
 {
     $code = Sentinel::login ($args->get(1), $args->get(2));
     if ($code != Sentinel::ERR_NONE)
@@ -561,7 +562,7 @@ Expr::register('sentinel::login', function($args, $parts, $data)
     return null;
 });
 
-Expr::register('sentinel::authorize', function($args, $parts, $data)
+Expr::register('sentinel::authorize', function($args)
 {
     if ($args->has(2))
         $code = Sentinel::authorize ($args->get(1), \Rose\bool($args->get(2)));
@@ -574,24 +575,153 @@ Expr::register('sentinel::authorize', function($args, $parts, $data)
     return null;
 });
 
-Expr::register('sentinel::login-manual', function($args, $parts, $data) {
+Expr::register('sentinel::login-manual', function($args) {
     Sentinel::manual ($args->get(1));
     return null;
 });
 
-Expr::register('sentinel::login-user', function($args, $parts, $data) {
+Expr::register('sentinel::login-user', function($args) {
     $code = Sentinel::login ($args->get(1), null, true, false);
     if ($code != Sentinel::ERR_NONE)
         Wind::reply([ 'response' => Wind::R_VALIDATION_ERROR, 'error' => Strings::get('@messages.'.Sentinel::errorName($code)) ]);
     return null;
 });
 
-Expr::register('sentinel::logout', function($args, $parts, $data) {
+Expr::register('sentinel::logout', function($args) {
     Sentinel::logout();
     return null;
 });
 
-Expr::register('sentinel::reload', function($args, $parts, $data) {
+Expr::register('sentinel::reload', function($args) {
     Sentinel::reload();
     return null;
+});
+
+/**
+ * Checks if an identifier has been banned or blocked. In either case an error will be returned.
+ * @code (`sentinel::access-required` <identifier> [message])
+ * @example
+ * (sentinel::access-required "user:admin")
+ * ; null
+ */
+Expr::register('sentinel::access-required', function($args)
+{
+    $conn = Resources::getInstance()->Database;
+    $identifier = $args->get(1);
+
+    $data = $conn->execAssoc('SELECT * FROM ##suspicious_identifiers WHERE identifier='.Connection::escape($identifier));
+    if (!$data) return null;
+
+    if ($data->is_banned) {
+        Wind::reply([ 
+            'response' => Wind::R_FORBIDDEN, 
+            'error' => $args->{2} ?? Strings::get('@messages.err_banned')
+        ]);
+    }
+
+    $next_attempt_at = new DateTime($data->next_attempt_at);
+    $delta = $next_attempt_at->sub(new DateTime());
+    if ($delta > 0)
+    {
+        if ($delta > 3600) $str_delta = (int)($delta/3600) . 'h';
+        else if ($delta > 60) $str_delta = (int)($delta/60) . 'm';
+        else $str_delta = $delta . 's';
+
+        Wind::reply([ 
+            'response' => Wind::R_FORBIDDEN, 
+            'error' => Strings::get('@messages.err_retry_later') . ' (' . $str_delta . ')', 
+            'retry_at' => (string)$next_attempt_at,
+            'wait' => $next_attempt_at->sub(new DateTime($data->last_attempt_at))
+        ]);
+    }
+
+    return null;
+});
+
+/**
+ * Registers an access-denied attempt for the specified identifier. Returns a status indicating the
+ * action taken for the identifier, valid values are `wait`, `block`, or `ban`.
+ * @code (`sentinel::access-denied` <identifier> [action='wait'] [wait-timeout=2] [block-timeout=30])
+ * @example
+ * (sentinel::access-denied "user:admin")
+ * ; blocked
+ */
+Expr::register('sentinel::access-denied', function($args)
+{
+    $conn = Resources::getInstance()->Database;
+    $identifier = $args->get(1);
+
+    $now = new DateTime();
+    $next = new DateTime();
+    $action = Text::toLowerCase($args->{2} ?? 'wait');
+    $delay = (int)($args->{3} ?? '2');
+    $long_delay = (int)($args->{4} ?? '30');
+
+    $data = $conn->execAssoc('SELECT * FROM ##suspicious_identifiers WHERE identifier='.Connection::escape($identifier));
+    if (!$data)
+    {
+        $data = new Map([
+            'identifier' => $identifier,
+            'next_attempt_at' => (string)($next->add($delay)),
+            'last_attempt_at' => (string)($now),
+            'count_failed' => $action === 'wait' ? 1 : 0,
+            'count_blocked' => $action === 'block' ? 1 : 0,
+            'is_banned' => $action === 'ban'
+        ]);
+
+        $conn->execQuery(
+            'INSERT INTO ##suspicious_identifiers ('. 
+                $data->keys()->map(function($i) use(&$conn) { return $conn->escapeName($i); })->join(', ') .
+            ') VALUES (' . $conn->escapeExt($data->values())->join(', ') . ')'
+        );
+
+        return $action;
+    }
+
+    $data->last_attempt_at = (string)$now;
+    $data->count_failed++;
+
+    if ($data->count_failed >= 3 || $action === 'block') {
+        $data->count_failed = 0;
+        $data->count_blocked++;
+        $delay = $long_delay * pow(2, $data->count_blocked-1);
+        $action = 'block';
+    }
+
+    if ($data->count_blocked >= 3 || $action === 'ban') {
+        $data->is_banned = 1;
+        $action = 'ban';
+    }
+
+    $data->next_attempt_at = (string)$next->add($delay);
+
+    $conn->execQuery(
+        'UPDATE ##suspicious_identifiers SET ' . $conn->escapeExt($data)->join(', ') .
+        ' WHERE identifier='.Connection::escape($identifier)
+    );
+
+    return $action;
+});
+
+/**
+ * Grants access to an identifier, calling this will reset the failed and blocked counters. A ban will
+ * continue to be in effect unless the `unban` parameter is set to `true`.
+ * @code (`sentinel::access-granted` <identifier>)
+ * @example
+ * (sentinel::access-granted "user:admin" [unban=false])
+ * ; true
+ */
+Expr::register('sentinel::access-granted', function($args)
+{
+    $conn = Resources::getInstance()->Database;
+    $identifier = $args->get(1);
+    $unban = \Rose\bool($args->{2});
+
+    $conn->execQuery(
+        'UPDATE ##suspicious_identifiers SET count_failed=0, count_blocked=0' .
+        ($unban ? ', is_banned=0' : '') .
+        ' WHERE identifier='.Connection::escape($identifier)
+    );
+
+    return true;
 });
