@@ -455,15 +455,15 @@ class Sentinel
 };
 
 /* ****************************************************************************** */
-Expr::register('sentinel::password', function($args) {
+Expr::register('sentinel:password', function($args) {
     return Sentinel::password($args->get(1));
 });
 
-Expr::register('sentinel::status', function($args) {
+Expr::register('sentinel:status', function($args) {
     return Sentinel::status();
 });
 
-Expr::register('sentinel::auth-required', function($args)
+Expr::register('sentinel:auth-required', function($args)
 {
     $conf = Configuration::getInstance()->Sentinel;
     if (Sentinel::status()) return null;
@@ -477,7 +477,7 @@ Expr::register('sentinel::auth-required', function($args)
     return null;
 });
 
-Expr::register('sentinel::privilege-required', function($args)
+Expr::register('sentinel:privilege-required', function($args)
 {
     $conf = Configuration::getInstance()->Sentinel;
     if (Sentinel::verifyPrivileges($args->get(1))) return null;
@@ -494,11 +494,11 @@ Expr::register('sentinel::privilege-required', function($args)
     return null;
 });
 
-Expr::register('sentinel::has-privilege', function($args) {
+Expr::register('sentinel:has-privilege', function($args) {
     return Sentinel::verifyPrivileges($args->get(1), $args->{2});
 });
 
-Expr::register('_sentinel::case', function($parts, $data)
+Expr::register('_sentinel:case', function($parts, $data)
 {
 	$n = $parts->length();
 	for ($i = 1; $i < $n; $i += 2)
@@ -513,7 +513,7 @@ Expr::register('_sentinel::case', function($parts, $data)
     return '';
 });
 
-Expr::register('sentinel::level-required', function($args)
+Expr::register('sentinel:level-required', function($args)
 {
     $conf = Configuration::getInstance()->Sentinel;
     if (Sentinel::hasLevel ($args->get(1))) return null;
@@ -530,31 +530,31 @@ Expr::register('sentinel::level-required', function($args)
     return null;
 });
 
-Expr::register('sentinel::has-level', function($args) {
+Expr::register('sentinel:has-level', function($args) {
     return Sentinel::hasLevel ($args->get(1));
 });
 
-Expr::register('sentinel::get-level', function($args) {
+Expr::register('sentinel:get-level', function($args) {
     return Sentinel::getLevel ($args->has(1) ? $args->get(1) : null);
 });
 
-Expr::register('sentinel::valid', function($args) {
+Expr::register('sentinel:valid', function($args) {
     return Sentinel::valid ($args->get(1), $args->get(2)) == Sentinel::ERR_NONE;
 });
 
-Expr::register('sentinel::token-id', function($args) {
+Expr::register('sentinel:token-id', function($args) {
     $user = Session::$data->user;
     return !$user ? null : $user->token_id;
 });
 
-Expr::register('sentinel::validate', function($args) {
+Expr::register('sentinel:validate', function($args) {
     $code = Sentinel::valid ($args->get(1), $args->get(2));
     if ($code != Sentinel::ERR_NONE)
         Wind::reply([ 'response' => Wind::R_VALIDATION_ERROR, 'error' => Strings::get('@messages.'.Sentinel::errorName($code)) ]);
     return null;
 });
 
-Expr::register('sentinel::login', function($args)
+Expr::register('sentinel:login', function($args)
 {
     $code = Sentinel::login ($args->get(1), $args->get(2));
     if ($code != Sentinel::ERR_NONE)
@@ -562,7 +562,7 @@ Expr::register('sentinel::login', function($args)
     return null;
 });
 
-Expr::register('sentinel::authorize', function($args)
+Expr::register('sentinel:authorize', function($args)
 {
     if ($args->has(2))
         $code = Sentinel::authorize ($args->get(1), \Rose\bool($args->get(2)));
@@ -575,36 +575,36 @@ Expr::register('sentinel::authorize', function($args)
     return null;
 });
 
-Expr::register('sentinel::login-manual', function($args) {
+Expr::register('sentinel:login-manual', function($args) {
     Sentinel::manual ($args->get(1));
     return null;
 });
 
-Expr::register('sentinel::login-user', function($args) {
+Expr::register('sentinel:login-user', function($args) {
     $code = Sentinel::login ($args->get(1), null, true, false);
     if ($code != Sentinel::ERR_NONE)
         Wind::reply([ 'response' => Wind::R_VALIDATION_ERROR, 'error' => Strings::get('@messages.'.Sentinel::errorName($code)) ]);
     return null;
 });
 
-Expr::register('sentinel::logout', function($args) {
+Expr::register('sentinel:logout', function($args) {
     Sentinel::logout();
     return null;
 });
 
-Expr::register('sentinel::reload', function($args) {
+Expr::register('sentinel:reload', function($args) {
     Sentinel::reload();
     return null;
 });
 
 /**
  * Checks if an identifier has been banned or blocked. In either case an error will be returned.
- * @code (`sentinel::access-required` <identifier> [message])
+ * @code (`sentinel:access-required` <identifier> [message])
  * @example
- * (sentinel::access-required "user:admin")
+ * (sentinel:access-required "user:admin")
  * ; null
  */
-Expr::register('sentinel::access-required', function($args)
+Expr::register('sentinel:access-required', function($args)
 {
     $conn = Resources::getInstance()->Database;
     $identifier = $args->get(1);
@@ -641,12 +641,12 @@ Expr::register('sentinel::access-required', function($args)
 /**
  * Registers an access-denied attempt for the specified identifier. Returns a status indicating the
  * action taken for the identifier, valid values are `wait`, `block`, or `ban`.
- * @code (`sentinel::access-denied` <identifier> [action='wait'] [wait-timeout=2] [block-timeout=30])
+ * @code (`sentinel:access-denied` <identifier> [action='wait'] [wait-timeout=2] [block-timeout=30])
  * @example
- * (sentinel::access-denied "user:admin")
+ * (sentinel:access-denied "user:admin")
  * ; blocked
  */
-Expr::register('sentinel::access-denied', function($args)
+Expr::register('sentinel:access-denied', function($args)
 {
     $conn = Resources::getInstance()->Database;
     $identifier = $args->get(1);
@@ -706,12 +706,12 @@ Expr::register('sentinel::access-denied', function($args)
 /**
  * Grants access to an identifier, calling this will reset the failed and blocked counters. A ban will
  * continue to be in effect unless the `unban` parameter is set to `true`.
- * @code (`sentinel::access-granted` <identifier>)
+ * @code (`sentinel:access-granted` <identifier>)
  * @example
- * (sentinel::access-granted "user:admin" [unban=false])
+ * (sentinel:access-granted "user:admin" [unban=false])
  * ; true
  */
-Expr::register('sentinel::access-granted', function($args)
+Expr::register('sentinel:access-granted', function($args)
 {
     $conn = Resources::getInstance()->Database;
     $identifier = $args->get(1);

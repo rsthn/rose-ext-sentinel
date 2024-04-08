@@ -14,11 +14,17 @@
     },
     "minimum-stability": "stable",
     "require": {
+        "rsthn/rose-core": "^5",
         "rsthn/rose-extension-installer": "*"
     },
     "autoload": {
         "psr-4": {
             "Rose\\Ext\\Sentinel\\": "."
+        }
+    },
+    "config": {
+        "allow-plugins": {
+            "rsthn/rose-extension-installer": true
         }
     }
 }
