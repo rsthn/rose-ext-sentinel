@@ -473,7 +473,7 @@ Expr::register('sentinel:auth-required', function($args)
         Gateway::header('WWW-Authenticate: Basic');
     }
 
-    Wind::reply([ 'response' => Wind::R_NOT_AUTHENTICATED ]);
+    Wind::reply([ 'response' => Wind::R_UNAUTHORIZED ]);
     return null;
 });
 
@@ -483,14 +483,14 @@ Expr::register('sentinel:privilege-required', function($args)
     if (Sentinel::verifyPrivileges($args->get(1))) return null;
 
     if (Sentinel::status())
-        Wind::reply([ 'response' => Wind::R_PRIVILEGE_REQUIRED ]);
+        Wind::reply([ 'response' => Wind::R_FORBIDDEN ]);
 
     if ($conf && $conf->authBasic === 'true') {
         Gateway::header('HTTP/1.1 401 Not Authenticated');
         Gateway::header('WWW-Authenticate: Basic');
     }
 
-    Wind::reply([ 'response' => Wind::R_NOT_AUTHENTICATED ]);
+    Wind::reply([ 'response' => Wind::R_UNAUTHORIZED ]);
     return null;
 });
 
@@ -519,14 +519,14 @@ Expr::register('sentinel:level-required', function($args)
     if (Sentinel::hasLevel ($args->get(1))) return null;
 
     if (Sentinel::status())
-        Wind::reply([ 'response' => Wind::R_PRIVILEGE_REQUIRED ]);
+        Wind::reply([ 'response' => Wind::R_FORBIDDEN ]);
 
     if ($conf && $conf->authBasic === 'true') {
         Gateway::header('HTTP/1.1 401 Not Authenticated');
         Gateway::header('WWW-Authenticate: Basic');
     }
 
-    Wind::reply([ 'response' => Wind::R_NOT_AUTHENTICATED ]);
+    Wind::reply([ 'response' => Wind::R_UNAUTHORIZED ]);
     return null;
 });
 
@@ -607,7 +607,7 @@ Expr::register('sentinel:access-required', function($args)
 
     if ($data->is_banned) {
         Wind::reply([ 
-            'response' => Wind::R_FORBIDDEN, 
+            'response' => Wind::R_BACK_OFF, 
             'error' => $args->{2} ?? Strings::get('@messages.err_banned')
         ]);
     }
@@ -631,7 +631,7 @@ Expr::register('sentinel:access-required', function($args)
             $str_delta .= $delta . 's';
 
         Wind::reply([ 
-            'response' => Wind::R_FORBIDDEN, 
+            'response' => Wind::R_BACK_OFF, 
             'error' => Strings::get('@messages.err_retry_later') . ' (' . Text::trim($str_delta) . ')', 
             'retry_at' => (string)$next_attempt_at,
             'wait' => $next_attempt_at->sub(new DateTime($data->last_attempt_at))

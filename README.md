@@ -145,14 +145,14 @@ Returns the authentication status (boolean) of the active session.
 
 ## `sentinel:auth-required`
 
-Fails with error code `408` if the active session is not authenticated.
+Fails with error code `401` if the active session is not authenticated.
 
 
 <br/>
 
 ## `sentinel:privilege-required` \<privileges: _string_\>
 
-Verifies if the active session has the specified privileges. Fails with `408` if the session has not been authenticated, or with `403` if the privilege requirements are not met.
+Verifies if the active session has the specified privileges. Fails with `401` if the session has not been authenticated, or with `403` if the privilege requirements are not met.
 
 
 <br/>
@@ -180,7 +180,7 @@ Note: This is meant for values, not blocks. Just like the standard `case` in Vio
 
 ## `sentinel:level-required` \<level: _int_\>
 
-Verifies if the active session meets the specified minimum privilege level. The level is the privilege_id divided by 100. Fails with `408` if the session has not been authenticated, or with `403` if the privilege requirements are not met.
+Verifies if the active session meets the specified minimum privilege level. The level is the privilege_id divided by 100. Fails with `401` if the session has not been authenticated, or with `403` if the privilege requirements are not met.
 
 
 <br/>
@@ -208,7 +208,7 @@ Verifies if the given credentials are valid, returns boolean.
 
 ## `sentinel:login` \<username: _string_\> \<password: _string_\>
 
-Verifies if the given credentials are valid, fails with `407` and sets the `error` field to "strings.@messages.err_authorization" or "strings.@messages.err_credentials". When successful, opens a session and loads the `user` field with the data of the user that has been authenticated.
+Verifies if the given credentials are valid, fails with `422` and sets the `error` field to "strings.@messages.err_authorization" or "strings.@messages.err_credentials". When successful, opens a session and loads the `user` field with the data of the user that has been authenticated.
 
 Note that Sentinel will automatically run the login process (without creating a session) if the `Authorization: BASIC data` header is detected and the `authBasic` is enabled in the configuration.
 
@@ -230,7 +230,7 @@ Returns the `token_id` of the active session or `null` if the user is not authen
 
 ## `sentinel:login-user` \<user_id: _int_\>
 
-Verifies if the user exist and forces a login without password. Fails with `407` and sets the `error` field to "strings.@messages.err_authorization" or "strings.@messages.err_credentials".
+Verifies if the user exist and forces a login without password. Fails with `422` and sets the `error` field to "strings.@messages.err_authorization" or "strings.@messages.err_credentials".
 
 When successful, opens a session and loads the `user` field with the data of the user that has been authenticated.
 
@@ -246,9 +246,9 @@ Initializes a session and loads the specified data object into the `user` sessio
 
 ## `sentinel:authorize` \<token: _string_\> [persistent: _bool_]
 
-First checks that `authBearer` is set to true (enabled) in the Sentinel configuration, when disabled fails with `407` and sets the `error` field to "strings.@messages.err_bearer_disabled".
+First checks that `authBearer` is set to true (enabled) in the Sentinel configuration, when disabled fails with `422` and sets the `error` field to "strings.@messages.err_bearer_disabled".
 
-After the initial check it verifies if the given token is valid and authorizes access. Fails with `407` and sets the `error` field to "strings.@messages.err_authorization".
+After the initial check it verifies if the given token is valid and authorizes access. Fails with `422` and sets the `error` field to "strings.@messages.err_authorization".
 
 When successful, opens a session if `persistent` is set to `true`, and loads the `user` field with the data of the user related to the token that just was authorized.
 
