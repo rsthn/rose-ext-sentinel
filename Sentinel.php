@@ -538,20 +538,13 @@ Expr::register('sentinel:get-level', function($args) {
     return Sentinel::getLevel ($args->has(1) ? $args->get(1) : null);
 });
 
-Expr::register('sentinel:valid', function($args) {
-    return Sentinel::valid ($args->get(1), $args->get(2)) == Sentinel::ERR_NONE;
-});
-
 Expr::register('sentinel:token-id', function($args) {
     $user = Session::$data->user;
     return !$user ? null : $user->token_id;
 });
 
 Expr::register('sentinel:validate', function($args) {
-    $code = Sentinel::valid ($args->get(1), $args->get(2));
-    if ($code != Sentinel::ERR_NONE)
-        Wind::reply([ 'response' => Wind::R_VALIDATION_ERROR, 'error' => Strings::get('@messages.'.Sentinel::errorName($code)) ]);
-    return null;
+    return Sentinel::valid ($args->get(1), $args->get(2)) == Sentinel::ERR_NONE;
 });
 
 Expr::register('sentinel:login', function($args)
@@ -640,8 +633,8 @@ Expr::register('sentinel:access-required', function($args)
 
 /**
  * Registers an access-denied attempt for the specified identifier. Returns a status indicating the
- * action taken for the identifier, valid values are `wait`, `block`, or `ban`.
- * @code (`sentinel:access-denied` <identifier> [action='wait'] [wait-timeout=2] [block-timeout=30])
+ * action taken for the identifier, valid values are `auto`, `wait`, `block`, or `ban`.
+ * @code (`sentinel:access-denied` <identifier> [action='auto'] [wait-timeout=2] [block-timeout=30])
  * @example
  * (sentinel:access-denied "user:admin")
  * ; blocked
@@ -653,7 +646,7 @@ Expr::register('sentinel:access-denied', function($args)
 
     $now = new DateTime();
     $next = new DateTime();
-    $action = Text::toLowerCase($args->{2} ?? 'wait');
+    $action = Text::toLowerCase($args->{2} ?? 'auto');
     $delay = (int)($args->{3} ?? '2');
     $long_delay = (int)($args->{4} ?? '30');
 
@@ -664,9 +657,9 @@ Expr::register('sentinel:access-denied', function($args)
             'identifier' => $identifier,
             'next_attempt_at' => (string)($next->add($delay)),
             'last_attempt_at' => (string)($now),
-            'count_failed' => $action === 'wait' ? 1 : 0,
+            'count_failed' => $action === 'wait' || $action === 'auto' ? 1 : 0,
             'count_blocked' => $action === 'block' ? 1 : 0,
-            'is_banned' => $action === 'ban'
+            'is_banned' => $action === 'ban' ? true : false
         ]);
 
         $conn->execQuery(
@@ -684,11 +677,11 @@ Expr::register('sentinel:access-denied', function($args)
     if ($data->count_failed >= 3 || $action === 'block') {
         $data->count_failed = 0;
         $data->count_blocked++;
-        $delay = $long_delay * pow(2, $data->count_blocked-1);
+        $delay = $long_delay * pow(2, min(8, $data->count_blocked-1));
         $action = 'block';
     }
 
-    if ($data->count_blocked >= 3 || $action === 'ban') {
+    if (($data->count_blocked >= 3 && $action === 'auto') || $action === 'ban') {
         $data->is_banned = 1;
         $action = 'ban';
     }

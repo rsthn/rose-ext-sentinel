@@ -93,7 +93,7 @@ CREATE INDEX token_privileges_flag ON token_privileges (token_id, flag);
 
 ### Identifier Banning
 
-Sentinel include support to blacklist identifiers that are trying to brute force the system. To use this feature check the `sentinel:access-required` and `sentinel:access-denied` functions.
+Sentinel include support to blacklist identifiers that are trying to brute force the system. To use this feature check the `sentinel:access-required`,`sentinel:access-denied` and `sentinel:access-granted` functions.
 
 The following table is required for this feature:
 
@@ -199,16 +199,9 @@ Returns the privilege level of the active session user, or of the given user if 
 
 <br/>
 
-## `sentinel:valid` \<username: _string_\> \<password: _string_\>
-
-Verifies if the specified credentials are valid, returns boolean.
-
-
-<br/>
-
 ## `sentinel:validate` \<username: _string_\> \<password: _string_\>
 
-Verifies if the given credentials are valid, fails with `407` and sets the `error` field to "strings.@messages.err_authorization" or "strings.@messages.err_credentials".
+Verifies if the given credentials are valid, returns boolean.
 
 
 <br/>
