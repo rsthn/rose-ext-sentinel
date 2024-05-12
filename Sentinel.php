@@ -616,13 +616,23 @@ Expr::register('sentinel:access-required', function($args)
     $delta = $next_attempt_at->sub(new DateTime());
     if ($delta > 0)
     {
-        if ($delta > 3600) $str_delta = (int)($delta/3600) . 'h';
-        else if ($delta > 60) $str_delta = (int)($delta/60) . 'm';
-        else $str_delta = $delta . 's';
+        $str_delta = '';
+        if ($delta > 3600) {
+            $str_delta .= (int)($delta/3600) . 'h ';
+            $delta = $delta % 3600;
+        }
+
+        if ($delta > 60) {
+            $str_delta .= (int)($delta/60) . 'm ';
+            $delta = $delta % 60;
+        }
+
+        if ($delta != 0)
+            $str_delta .= $delta . 's';
 
         Wind::reply([ 
             'response' => Wind::R_FORBIDDEN, 
-            'error' => Strings::get('@messages.err_retry_later') . ' (' . $str_delta . ')', 
+            'error' => Strings::get('@messages.err_retry_later') . ' (' . Text::trim($str_delta) . ')', 
             'retry_at' => (string)$next_attempt_at,
             'wait' => $next_attempt_at->sub(new DateTime($data->last_attempt_at))
         ]);

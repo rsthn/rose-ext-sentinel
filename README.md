@@ -100,7 +100,7 @@ The following table is required for this feature:
 ```sql
 CREATE TABLE suspicious_identifiers
 (
-    identifier VARCHAR(128) NOT NULL,
+    identifier VARCHAR(512) NOT NULL,
     PRIMARY KEY (identifier),
     next_attempt_at DATETIME DEFAULT NULL,
     last_attempt_at DATETIME NOT NULL,

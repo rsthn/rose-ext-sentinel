@@ -82,7 +82,7 @@ CREATE INDEX sessions_device_id ON sessions (device_id);
 --------------------------------------------------------------------------------
 CREATE TABLE suspicious_identifiers
 (
-    identifier VARCHAR(128) NOT NULL PRIMARY KEY
+    identifier VARCHAR(512) NOT NULL PRIMARY KEY
     , next_attempt_at TIMESTAMP
     , last_attempt_at TIMESTAMP NOT NULL
     , count_failed INT DEFAULT 1
