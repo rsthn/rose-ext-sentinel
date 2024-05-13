@@ -343,7 +343,7 @@ class Sentinel
 
     /**
      * Checks if the current user has at least one privilege group.
-     * @param {string} $value - Privilege sets separated by comma, AND-groups separated by ampersand (&).
+     * @param {string} $value - Privilege sets separated by pipe, AND-groups separated by ampersand (&).
      * @param {string|null} $username - Username to check, if `null` the current user will be used.
      * @returns {bool}
      */
@@ -352,7 +352,7 @@ class Sentinel
         if (!$username && !Sentinel::status())
             return false;
 
-        $groups = Text::split(',', Text::trim($value ? $value : ''));
+        $groups = Text::split('|', Text::trim($value ? $value : ''));
         foreach ($groups->__nativeArray as $group)
         {
             $groupFailed = false;

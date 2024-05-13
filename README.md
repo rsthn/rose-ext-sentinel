@@ -152,19 +152,19 @@ Fails with error code `401` if the active session is not authenticated.
 
 ## `sentinel:privilege-required` \<privileges: _string_\>
 
-Verifies if the active session has the specified privileges. Fails with `401` if the session has not been authenticated, or with `403` if the privilege requirements are not met.
+Verifies if the active session has the specified privileges. Fails with `401` if the session has not been authenticated, or with `403` if the privilege requirements are not met. The string contains privilege name sets separated by pipe (|), and AND-groups separated by ampersand (&).
 
 
 <br/>
 
 ## `sentinel:has-privilege` \<privileges: _string_\>
 
-Verifies if the active session has the specified privileges. Does not fail, returns boolean instead.
+Verifies if the active session has the specified privileges. Does not fail, returns boolean instead. The string contains privilege name sets separated by pipe (|), and AND-groups separated by ampersand (&).
 
 <br/>
 
 ## `sentinel:case` [<privileges: _string_> \<result: _any_> ...] [\<default-result>]
-Checks the privileges of the current user against one of the case values. Returns the respective result or the default result if none matches. If no default result is specified, empty string is returned.
+Checks the privileges of the current user against one of the case values. Returns the respective result or the default result if none matches. If no default result is specified, empty string is returned. Each case string contains privilege name sets separated by pipe (|), and AND-groups separated by ampersand (&).
 
 Note: This is meant for values, not blocks. Just like the standard `case` in Violet.
 ```lisp
