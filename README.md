@@ -127,143 +127,108 @@ ENGINE=InnoDB CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci AUTO_INCREMENT=1;
 
 <br/><br/>
 
-# Expression Functions
+# Functions
 
-## `sentinel:password` \<password: _string_\>
+### (`sentinel:password` \<password>)
+Calculates the hash of the given password and returns it. The plain password gets the `Sentinel.suffix` and `Sentinel.prefix` configuration
+properties appended and prepended respectively before calculating its hash indicated by `Sentinel.hash`.
 
-Calculates the hash of the given password and returns it. The plain password gets the `Sentinel.suffix` and `Sentinel.prefix` configuration properties appended and prepended respectively before calculating its hash indicated by `Sentinel.hash`.
-
-
-<br/>
-
-## `sentinel:status`
-
+### (`sentinel:status`)
 Returns the authentication status (boolean) of the active session.
 
-
-<br/>
-
-## `sentinel:auth-required`
-
+### (`sentinel:auth-required`)
 Fails with error code `401` if the active session is not authenticated.
 
+### (`sentinel:privilege-required` \<privileges>)
+Verifies if the active session has the specified privileges. Fails with `401` if the session has not been authenticated, 
+or with `403` if the privilege requirements are not met. The string contains privilege name sets separated by pipe (|), 
+and AND-groups separated by ampersand (&).
 
+### (`sentinel:has-privilege` \<privileges>)
+Verifies if the active session has the specified privileges. Returns boolean. The string contains privilege name sets
+separated by pipe (|), and AND-groups separated by ampersand (&).
+
+### (`sentinel:case` \<case1> \<result1> ... [default \<default>])
+Checks the privileges of the active user against one of the case values. Returns the respective result or the default result if none
+matches. If no default result is specified, empty string is returned. Each case string contains privilege name sets separated by
+pipe (|), and AND-groups separated by ampersand (&).
 <br/>
-
-## `sentinel:privilege-required` \<privileges: _string_\>
-
-Verifies if the active session has the specified privileges. Fails with `401` if the session has not been authenticated, or with `403` if the privilege requirements are not met. The string contains privilege name sets separated by pipe (|), and AND-groups separated by ampersand (&).
-
-
-<br/>
-
-## `sentinel:has-privilege` \<privileges: _string_\>
-
-Verifies if the active session has the specified privileges. Does not fail, returns boolean instead. The string contains privilege name sets separated by pipe (|), and AND-groups separated by ampersand (&).
-
-<br/>
-
-## `sentinel:case` [<privileges: _string_> \<result: _any_> ...] [\<default-result>]
-Checks the privileges of the current user against one of the case values. Returns the respective result or the default result if none matches. If no default result is specified, empty string is returned. Each case string contains privilege name sets separated by pipe (|), and AND-groups separated by ampersand (&).
-
-Note: This is meant for values, not blocks. Just like the standard `case` in Violet.
+<br/>Note: This is meant for values, not blocks. Just like the standard `case` in Violet.
 ```lisp
 (sentinel:case
     "admin"      "Has privileges admin"
     "client"     "Has privileges client"
-    "x, y"       "Has privileges x or y"
+    "x | y"      "Has privileges x or y"
     "a & b & c"  "Has privileges a, b and c"
 )
 ```
 
-<br/>
+### (`sentinel:level-required` \<level>)
+Verifies if the active user meets the specified minimum privilege level. The level is the privilege_id divided by 100. Fails with `401` 
+if the user has not been authenticated, or with `403` if the privilege requirements are not met.
 
-## `sentinel:level-required` \<level: _int_\>
+### (`sentinel:has-level` \<level>)
+Verifies if the active user meets the specified minimum privilege level. The level is the privilege_id divided by 100, returns boolean.
 
-Verifies if the active session meets the specified minimum privilege level. The level is the privilege_id divided by 100. Fails with `401` if the session has not been authenticated, or with `403` if the privilege requirements are not met.
-
-
-<br/>
-
-## `sentinel:has-level` \<level: _int_\>
-
-Verifies if the active session meets the specified minimum privilege level. The level is the privilege_id divided by 100. Does not fail, returns boolean instead.
-
-
-<br/>
-
-## `sentinel:get-level` [username: _string_]
-
+### (`sentinel:get-level` [username])
 Returns the privilege level of the active session user, or of the given user if `username` is provided.
 
-
-<br/>
-
-## `sentinel:validate` \<username: _string_\> \<password: _string_\>
-
+### (`sentinel:validate` \<username> \<password>)
 Verifies if the given credentials are valid, returns boolean.
 
-
+### (`sentinel:login` \<username> \<password>)
+Verifies if the given credentials are valid, fails with `422` and sets the `error` field to "strings.@messages.err_authorization" or 
+"strings.@messages.err_credentials". When successful, opens a session and loads the `user` field with the data of the user that has been authenticated.
 <br/>
-
-## `sentinel:login` \<username: _string_\> \<password: _string_\>
-
-Verifies if the given credentials are valid, fails with `422` and sets the `error` field to "strings.@messages.err_authorization" or "strings.@messages.err_credentials". When successful, opens a session and loads the `user` field with the data of the user that has been authenticated.
-
-Note that Sentinel will automatically run the login process (without creating a session) if the `Authorization: BASIC data` header is detected and the `authBasic` is enabled in the configuration.
-
-When using Apache, the HTTP_AUTHORIZATION header is not sent to the application, however by setting the following in your `.htaccess` it will be available for Sentinel to use it.
-
-```
-SetEnvIf Authorization "(.*)" HTTP_AUTHORIZATION=$1
-```
-
-
+<br/>Note that Sentinel will automatically run the login process (without creating a session) if the `Authorization: BASIC data` header is detected 
+<br/>and the `authBasic` is enabled in the configuration.
 <br/>
+<br/>When using Apache, the `HTTP_AUTHORIZATION` header is not sent to the application, however by setting the following in your `.htaccess` it 
+<br/>will be available for Sentinel to use it.
+<br/>
+<br/>```SetEnvIf Authorization "(.*)" HTTP_AUTHORIZATION=$1```
 
-## `sentinel:token-id`
+### (`sentinel:authorize` \<token> [persistent=false])
+First checks that `authBearer` is set to `true` (enabled) in the Sentinel configuration, when disabled fails with `422` and sets the `error` 
+field to "strings.@messages.err_bearer_disabled".
+<br/>
+<br/>After the initial check it verifies if the given token is valid and authorizes access. Fails with `422` and sets the `error` field
+<br/>to "strings.@messages.err_authorization".
+<br/>
+<br/>When successful, opens a session if `persistent` is set to `true`, and loads the `user` field with the data of the user related to the
+<br/>token that just was authorized.
+<br/>
+<br/>Note that Sentinel will automatically run the authorization process (without creating a session) if the `Authorization: BEARER token`
+<br/>header is detected and `authBearer` is enabled in the configuration.
 
+### (`sentinel:token-id`)
 Returns the `token_id` of the active session or `null` if the user is not authenticated or if the user authenticated by other means without a token.
 
+### (`sentinel:login-manual` \<data>)
+Initializes a session and loads the specified data object into the `user` session field, effectively creating (manually) an
+authenticated session. If the data does not exist in the database, use only the `auth-required` and `logout` functions
+for access control, all others will fail.
 
+### (`sentinel:login-user` \<user_id>)
+Verifies if the user exist and forces a login **without** password. Fails with `422` and sets the `error` field
+to "strings.@messages.err_authorization" or "strings.@messages.err_credentials".
 <br/>
+<br/>When successful, opens a session and loads the `user` field with the data of the user that has been authenticated.
 
-## `sentinel:login-user` \<user_id: _int_\>
+### (`sentinel:logout`)
+Removes authentication status from the active session. Note that this function does not remove the session itself, only
+the authentication data of the user. Use `session:destroy` to remove the session completely.
 
-Verifies if the user exist and forces a login without password. Fails with `422` and sets the `error` field to "strings.@messages.err_authorization" or "strings.@messages.err_credentials".
-
-When successful, opens a session and loads the `user` field with the data of the user that has been authenticated.
-
-
-<br/>
-
-## `sentinel:login-manual` \<data: _object_\>
-
-Initializes a session and loads the specified data object into the `user` session field, effectively creating (manually) an authenticated session. If the data does not exist in the database, use only the `auth-required` and `logout` functions for access control, all others will fail.
-
-
-<br/>
-
-## `sentinel:authorize` \<token: _string_\> [persistent: _bool_]
-
-First checks that `authBearer` is set to true (enabled) in the Sentinel configuration, when disabled fails with `422` and sets the `error` field to "strings.@messages.err_bearer_disabled".
-
-After the initial check it verifies if the given token is valid and authorizes access. Fails with `422` and sets the `error` field to "strings.@messages.err_authorization".
-
-When successful, opens a session if `persistent` is set to `true`, and loads the `user` field with the data of the user related to the token that just was authorized.
-
-Note that Sentinel will automatically run the authorization process (without creating a session) if the `Authorization: BEARER token` header is detected and `authBearer` is enabled in the configuration.
-
-
-<br/>
-
-## `sentinel:logout`
-
-Removes authentication status from the active session. Note that this function does not remove the session itself, only the authentication data of the user. Use `session:destroy` to remove the session completely.
-
-
-<br/>
-
-## `sentinel:reload`
-
+### (`sentinel:reload`)
 Reloads the active session data and privileges from the database.
+
+### (`sentinel:access-required` \<identifier> [message])
+Checks if an identifier has been banned or blocked. In either case an error will be returned.
+
+### (`sentinel:access-denied` \<identifier> [action='auto'] [wait-timeout=2] [block-timeout=30])
+Registers an access-denied attempt for the specified identifier. Returns a status indicating the
+action taken for the identifier, valid values are `auto`, `wait`, `block`, or `ban`.
+
+### (`sentinel:access-granted` \<identifier> [unban=false])
+Grants access to an identifier, calling this will reset the failed and blocked counters. A ban will
+continue to be in effect unless the `unban` parameter is set to `true`.

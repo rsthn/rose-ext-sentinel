@@ -18,6 +18,8 @@ use Rose\Arry;
 
 use Rose\Ext\Wind;
 
+// @title Sentinel
+
 if (!Extensions::isInstalled('Wind'))
     return;
 
@@ -455,14 +457,28 @@ class Sentinel
 };
 
 /* ****************************************************************************** */
+
+/**
+ * Calculates the hash of the given password and returns it. The plain password gets the `Sentinel.suffix` and `Sentinel.prefix` configuration
+ * properties appended and prepended respectively before calculating its hash indicated by `Sentinel.hash`.
+ * @code (`sentinel:password` <password>)
+ */
 Expr::register('sentinel:password', function($args) {
     return Sentinel::password($args->get(1));
 });
 
+/**
+ * Returns the authentication status (boolean) of the active session.
+ * @code (`sentinel:status`)
+ */
 Expr::register('sentinel:status', function($args) {
     return Sentinel::status();
 });
 
+/**
+ * Fails with error code `401` if the active session is not authenticated.
+ * @code (`sentinel:auth-required`)
+ */
 Expr::register('sentinel:auth-required', function($args)
 {
     $conf = Configuration::getInstance()->Sentinel;
@@ -477,6 +493,12 @@ Expr::register('sentinel:auth-required', function($args)
     return null;
 });
 
+/**
+ * Verifies if the active session has the specified privileges. Fails with `401` if the session has not been authenticated, 
+ * or with `403` if the privilege requirements are not met. The string contains privilege name sets separated by pipe (|), 
+ * and AND-groups separated by ampersand (&).
+ * @code (`sentinel:privilege-required` <privileges>)
+ */
 Expr::register('sentinel:privilege-required', function($args)
 {
     $conf = Configuration::getInstance()->Sentinel;
@@ -494,10 +516,30 @@ Expr::register('sentinel:privilege-required', function($args)
     return null;
 });
 
+/**
+ * Verifies if the active session has the specified privileges. Returns boolean. The string contains privilege name sets
+ * separated by pipe (|), and AND-groups separated by ampersand (&).
+ * @code (`sentinel:has-privilege` <privileges>)
+ */
 Expr::register('sentinel:has-privilege', function($args) {
     return Sentinel::verifyPrivileges($args->get(1), $args->{2});
 });
 
+/**
+ * Checks the privileges of the active user against one of the case values. Returns the respective result or the default result if none
+ * matches. If no default result is specified, empty string is returned. Each case string contains privilege name sets separated by
+ * pipe (|), and AND-groups separated by ampersand (&).
+ *
+ * Note: This is meant for values, not blocks. Just like the standard `case` in Violet.
+ * @code (`sentinel:case` <case1> <result1> ... [default <default>])
+ * @example
+ * (sentinel:case
+ *     "admin"      "Has privileges admin"
+ *     "client"     "Has privileges client"
+ *     "x | y"      "Has privileges x or y"
+ *     "a & b & c"  "Has privileges a, b and c"
+ * )
+ */
 Expr::register('_sentinel:case', function($parts, $data)
 {
 	$n = $parts->length();
@@ -513,6 +555,11 @@ Expr::register('_sentinel:case', function($parts, $data)
     return '';
 });
 
+/**
+ * Verifies if the active user meets the specified minimum privilege level. The level is the privilege_id divided by 100. Fails with `401` 
+ * if the user has not been authenticated, or with `403` if the privilege requirements are not met.
+ * @code (`sentinel:level-required` <level>)
+ */
 Expr::register('sentinel:level-required', function($args)
 {
     $conf = Configuration::getInstance()->Sentinel;
@@ -530,23 +577,46 @@ Expr::register('sentinel:level-required', function($args)
     return null;
 });
 
+/**
+ * Verifies if the active user meets the specified minimum privilege level. The level is the privilege_id divided by 100, returns boolean.
+ * @code (`sentinel:has-level` <level>)
+ */
 Expr::register('sentinel:has-level', function($args) {
     return Sentinel::hasLevel ($args->get(1));
 });
 
+
+/**
+ * Returns the privilege level of the active session user, or of the given user if `username` is provided.
+ * @code (`sentinel:get-level` [username])
+ */
 Expr::register('sentinel:get-level', function($args) {
     return Sentinel::getLevel ($args->has(1) ? $args->get(1) : null);
 });
 
-Expr::register('sentinel:token-id', function($args) {
-    $user = Session::$data->user;
-    return !$user ? null : $user->token_id;
-});
 
+/**
+ * Verifies if the given credentials are valid, returns boolean.
+ * @code (`sentinel:validate` <username> <password>)
+ */
 Expr::register('sentinel:validate', function($args) {
     return Sentinel::valid ($args->get(1), $args->get(2)) == Sentinel::ERR_NONE;
 });
 
+
+/**
+ * Verifies if the given credentials are valid, fails with `422` and sets the `error` field to "strings.@messages.err_authorization" or 
+ * "strings.@messages.err_credentials". When successful, opens a session and loads the `user` field with the data of the user that has been authenticated.
+ *
+ * Note that Sentinel will automatically run the login process (without creating a session) if the `Authorization: BASIC data` header is detected 
+ * and the `authBasic` is enabled in the configuration.
+ *
+ * When using Apache, the `HTTP_AUTHORIZATION` header is not sent to the application, however by setting the following in your `.htaccess` it 
+ * will be available for Sentinel to use it.
+ *
+ * ```SetEnvIf Authorization "(.*)" HTTP_AUTHORIZATION=$1```
+ * @code (`sentinel:login` <username> <password>)
+ */
 Expr::register('sentinel:login', function($args)
 {
     $code = Sentinel::login ($args->get(1), $args->get(2));
@@ -555,6 +625,22 @@ Expr::register('sentinel:login', function($args)
     return null;
 });
 
+
+/**
+ * First checks that `authBearer` is set to `true` (enabled) in the Sentinel configuration, when disabled fails with `422` and sets the `error` 
+ * field to "strings.@messages.err_bearer_disabled".
+ *
+ * After the initial check it verifies if the given token is valid and authorizes access. Fails with `422` and sets the `error` field
+ * to "strings.@messages.err_authorization".
+ * 
+ * When successful, opens a session if `persistent` is set to `true`, and loads the `user` field with the data of the user related to the
+ * token that just was authorized.
+ * 
+ * Note that Sentinel will automatically run the authorization process (without creating a session) if the `Authorization: BEARER token`
+ * header is detected and `authBearer` is enabled in the configuration.
+ * 
+ * @code (`sentinel:authorize` <token> [persistent=false])
+ */
 Expr::register('sentinel:authorize', function($args)
 {
     if ($args->has(2))
@@ -568,11 +654,36 @@ Expr::register('sentinel:authorize', function($args)
     return null;
 });
 
+
+/**
+ * Returns the `token_id` of the active session or `null` if the user is not authenticated or if the user authenticated by other means without a token.
+ * @code (`sentinel:token-id`)
+ */
+Expr::register('sentinel:token-id', function($args) {
+    $user = Session::$data->user;
+    return !$user ? null : $user->token_id;
+});
+
+
+/**
+ * Initializes a session and loads the specified data object into the `user` session field, effectively creating (manually) an
+ * authenticated session. If the data does not exist in the database, use only the `auth-required` and `logout` functions
+ * for access control, all others will fail.
+ * @code (`sentinel:login-manual` <data>)
+ */
 Expr::register('sentinel:login-manual', function($args) {
     Sentinel::manual ($args->get(1));
     return null;
 });
 
+
+/**
+ * Verifies if the user exist and forces a login **without** password. Fails with `422` and sets the `error` field
+ * to "strings.@messages.err_authorization" or "strings.@messages.err_credentials".
+ *
+ * When successful, opens a session and loads the `user` field with the data of the user that has been authenticated.
+ * @code (`sentinel:login-user` <user_id>)
+ */
 Expr::register('sentinel:login-user', function($args) {
     $code = Sentinel::login ($args->get(1), null, true, false);
     if ($code != Sentinel::ERR_NONE)
@@ -580,22 +691,31 @@ Expr::register('sentinel:login-user', function($args) {
     return null;
 });
 
+
+/**
+ * Removes authentication status from the active session. Note that this function does not remove the session itself, only
+ * the authentication data of the user. Use `session:destroy` to remove the session completely.
+ * @code (`sentinel:logout`)
+ */
 Expr::register('sentinel:logout', function($args) {
     Sentinel::logout();
     return null;
 });
 
+
+/**
+ * Reloads the active session data and privileges from the database.
+ * @code (`sentinel:reload`)
+ */
 Expr::register('sentinel:reload', function($args) {
     Sentinel::reload();
     return null;
 });
 
+
 /**
  * Checks if an identifier has been banned or blocked. In either case an error will be returned.
  * @code (`sentinel:access-required` <identifier> [message])
- * @example
- * (sentinel:access-required "user:admin")
- * ; null
  */
 Expr::register('sentinel:access-required', function($args)
 {
@@ -641,13 +761,11 @@ Expr::register('sentinel:access-required', function($args)
     return null;
 });
 
+
 /**
  * Registers an access-denied attempt for the specified identifier. Returns a status indicating the
  * action taken for the identifier, valid values are `auto`, `wait`, `block`, or `ban`.
  * @code (`sentinel:access-denied` <identifier> [action='auto'] [wait-timeout=2] [block-timeout=30])
- * @example
- * (sentinel:access-denied "user:admin")
- * ; blocked
  */
 Expr::register('sentinel:access-denied', function($args)
 {
@@ -706,13 +824,11 @@ Expr::register('sentinel:access-denied', function($args)
     return $action;
 });
 
+
 /**
  * Grants access to an identifier, calling this will reset the failed and blocked counters. A ban will
  * continue to be in effect unless the `unban` parameter is set to `true`.
- * @code (`sentinel:access-granted` <identifier>)
- * @example
- * (sentinel:access-granted "user:admin" [unban=false])
- * ; true
+ * @code (`sentinel:access-granted` <identifier> [unban=false])
  */
 Expr::register('sentinel:access-granted', function($args)
 {

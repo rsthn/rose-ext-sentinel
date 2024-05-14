@@ -1,0 +1,18 @@
+ECHO {clr 92}Updating documentation ...{clr 0}
+    RUN rose :vdocs Sentinel.php
+
+ECHO {clr 92}Bumping up version ...{clr 0}
+    NEW_VERSION {with v {split "." {file:read "VERSION.txt"}} {set idx {- {len {v}} 1}} {set v.{idx} {+ 1 {v.{idx}}}} {join "." {v}}}
+    r0 {NEW_VERSION}
+    WRITE VERSION.txt
+
+ECHO {clr 92}Commiting ...{clr 0}
+    RUN git add .
+    RUN git commit -m "v{NEW_VERSION}"
+
+ECHO {clr 92}Pushing ...{clr 0}
+    RUN git push
+    RUN git tag v{NEW_VERSION}
+    RUN git push --tags
+
+ECHO {clr 92}* Deployment completed: v{NEW_VERISON}{clr 0}
