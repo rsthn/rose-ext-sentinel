@@ -15,4 +15,4 @@ ECHO {clr 92}Pushing ...{clr 0}
     RUN git tag v{NEW_VERSION}
     RUN git push --tags
 
-ECHO {clr 92}* Deployment completed: v{NEW_VERISON}{clr 0}
+ECHO {clr 92}* Deployment completed: v{NEW_VERSION}{clr 0}
