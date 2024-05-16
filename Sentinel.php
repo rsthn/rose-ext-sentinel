@@ -20,9 +20,6 @@ use Rose\Ext\Wind;
 
 // @title Sentinel
 
-if (!Extensions::isInstalled('Wind'))
-    return;
-
 /**
  * Sentinel extension.
  */
@@ -31,10 +28,15 @@ class Sentinel
     /**
      * Error codes.
      */
-    public const ERR_NONE					= 0;
-    public const ERR_AUTHORIZATION			= 1;
-    public const ERR_CREDENTIALS			= 2;
-    public const ERR_BEARER_DISABLED		= 3;
+    public const ERR_NONE                   = 0;
+    public const ERR_AUTHORIZATION_BLOCKED  = 1;
+    public const ERR_INVALID_CREDENTIALS    = 2;
+    public const ERR_AUTH_BEARER_DISABLED   = 3;
+    public const ERR_AUTH_REQUIRED          = 4;
+    public const ERR_PRIVILEGE_REQUIRED     = 5;
+    public const ERR_LEVEL_REQUIRED         = 6;
+    public const ERR_AUTHORIZATION_BANNED   = 7;
+    public const ERR_RETRY_LATER            = 8;
 
     /**
      * Indicates if the session has been loaded.
@@ -42,22 +44,32 @@ class Sentinel
     private static $loadedSession = false;
 
     /**
-     * Returns the name of the error code.
-     * @param {int} $code - Error code.
+     * Returns the error message for the respective error code.
+     * @param {int} code - Error code.
      * @returns {string}
      */
-    public static function errorName ($code) : string
+    public static function errorString ($code) : string
     {
         switch ($code) {
-            case Sentinel::ERR_AUTHORIZATION:
-                return 'err_authorization';
-            case Sentinel::ERR_CREDENTIALS:
-                return 'err_credentials';
-            case Sentinel::ERR_BEARER_DISABLED:
-                return 'err_bearer_disabled';
+            case Sentinel::ERR_AUTHORIZATION_BLOCKED:
+                return Strings::get('@messages.authorization_blocked');
+            case Sentinel::ERR_INVALID_CREDENTIALS:
+                return Strings::get('@messages.invalid_credentials');
+            case Sentinel::ERR_AUTH_BEARER_DISABLED:
+                return Strings::get('@messages.authorization_bearer_not_supported');
+            case Sentinel::ERR_AUTH_REQUIRED:
+                return Strings::get('@messages.authentication_required');
+            case Sentinel::ERR_PRIVILEGE_REQUIRED:
+                return Strings::get('@messages.required_privileges_not_fulfilled');
+            case Sentinel::ERR_LEVEL_REQUIRED:
+                return Strings::get('@messages.required_privileges_level_not_fulfilled');
+            case Sentinel::ERR_AUTHORIZATION_BANNED:
+                return Strings::get('@messages.authorization_banned');
+            case Sentinel::ERR_RETRY_LATER:
+                return Strings::get('@messages.retry_later');
         }
 
-        return 'err_none';
+        return '';
     }
 
     /**
@@ -76,7 +88,7 @@ class Sentinel
     }
 
     /**
-     * Returns the privileges of the current user (or token privileges if `tokenPrivileges` is enabled).
+     * Returns the privileges of the current user (or token privileges if `token_privileges` is enabled).
      * @returns {string[]}
      */
     private static function getPrivileges()
@@ -85,7 +97,7 @@ class Sentinel
         if (!Sentinel::status()) return new Arry();
 
         $conf = Configuration::getInstance()->Sentinel;
-        if ($conf && $conf->tokenPrivileges === 'true' && Session::$data->user->token_id) {
+        if ($conf && $conf->token_privileges === 'true' && Session::$data->user->token_id) {
             return $conn->execQuery(
                 'SELECT DISTINCT p.privilege_id, p.name FROM ##privileges p '.
                 'INNER JOIN ##token_privileges t ON t.privilege_id = p.privilege_id '.
@@ -120,18 +132,18 @@ class Sentinel
         if (!$auth) return Session::$data->user !== null ? true : false;
 
         $tmp = Text::toUpperCase($auth);
-        if (Text::startsWith($tmp, 'BEARER') && $conf && $conf->authBearer === 'true') {
+        if (Text::startsWith($tmp, 'BEARER') && $conf && $conf->auth_bearer === 'true') {
             $code = self::authorize(Text::substring($auth, 7), false);
             if ($code !== Sentinel::ERR_NONE)
-                Wind::reply([ 'response' => Wind::R_VALIDATION_ERROR, 'error' => Strings::get('@messages.'.Sentinel::errorName($code)) ]);
+                Wind::reply([ 'response' => Wind::R_VALIDATION_ERROR, 'error' => Sentinel::errorString($code) ]);
         }
-        else if (Text::startsWith($tmp, 'BASIC') && $conf && $conf->authBasic === 'true') {
+        else if (Text::startsWith($tmp, 'BASIC') && $conf && $conf->auth_basic === 'true') {
             $auth = base64_decode(Text::substring($auth, 6));
             $i = strpos($auth, ':');
             if ($i == -1) {
                 Gateway::header('HTTP/1.1 401 Not Authenticated');
                 Gateway::header('WWW-Authenticate: Basic');
-                Wind::reply([ 'response' => Wind::R_VALIDATION_ERROR, 'error' => Strings::get('@messages.'.Sentinel::errorName(Sentinel::ERR_CREDENTIALS)) ]);
+                Wind::reply([ 'response' => Wind::R_VALIDATION_ERROR, 'error' => Sentinel::errorString(Sentinel::ERR_INVALID_CREDENTIALS) ]);
             }
 
             $username = Text::substring($auth, 0, $i);
@@ -140,7 +152,7 @@ class Sentinel
             if ($code != Sentinel::ERR_NONE) {
                 Gateway::header('HTTP/1.1 401 Not Authenticated');
                 Gateway::header('WWW-Authenticate: Basic');
-                Wind::reply([ 'response' => Wind::R_VALIDATION_ERROR, 'error' => Strings::get('@messages.'.Sentinel::errorName($code)) ]);
+                Wind::reply([ 'response' => Wind::R_VALIDATION_ERROR, 'error' => Sentinel::errorString($code) ]);
             }
         }
 
@@ -156,8 +168,8 @@ class Sentinel
     public static function authorize (string $token, bool $openSession=true)
     {
         $conf = Configuration::getInstance()->Sentinel;
-        if ($conf && $conf->authBearer !== 'true')
-            return Sentinel::ERR_BEARER_DISABLED;
+        if ($conf && $conf->auth_bearer !== 'true')
+            return Sentinel::ERR_AUTH_BEARER_DISABLED;
 
         $data = Resources::getInstance()->Database->execAssoc(
             'SELECT u.*, t.token_id, COALESCE(u.blocked_at, t.blocked_at) blocked_at '.
@@ -165,10 +177,10 @@ class Sentinel
             'INNER JOIN ##tokens t ON t.deleted_at IS NULL AND t.user_id = u.user_id '.
             'WHERE u.deleted_at IS NULL AND t.token = '.Connection::escape($token)
         );
-        if (!$data) return Sentinel::ERR_CREDENTIALS;
+        if (!$data) return Sentinel::ERR_INVALID_CREDENTIALS;
 
         if ($data->blocked_at)
-            return Sentinel::ERR_AUTHORIZATION;
+            return Sentinel::ERR_AUTHORIZATION_BLOCKED;
 
         self::$loadedSession = true;
         if ($openSession) Session::open(true);
@@ -210,10 +222,10 @@ class Sentinel
             );
         }
 
-        if (!$data) return Sentinel::ERR_CREDENTIALS;
+        if (!$data) return Sentinel::ERR_INVALID_CREDENTIALS;
 
         if ($data->blocked_at)
-            return Sentinel::ERR_AUTHORIZATION;
+            return Sentinel::ERR_AUTHORIZATION_BLOCKED;
 
         self::$loadedSession = true;
         if ($openSession) Session::open(true);
@@ -252,10 +264,10 @@ class Sentinel
         $data = Resources::getInstance()->Database->execAssoc(
             'SELECT * FROM ##users WHERE deleted_at IS NULL AND username = '.Connection::escape($username).' AND password = '.Sentinel::password($password, true)
         );
-        if (!$data) return Sentinel::ERR_CREDENTIALS;
+        if (!$data) return Sentinel::ERR_INVALID_CREDENTIALS;
 
         if ($data->blocked_at)
-            return Sentinel::ERR_AUTHORIZATION;
+            return Sentinel::ERR_AUTHORIZATION_BLOCKED;
 
         return Sentinel::ERR_NONE;
     }
@@ -325,7 +337,7 @@ class Sentinel
 
         if (!Sentinel::status()) return false;
 
-        if ($conf && $conf->tokenPrivileges === 'true' && Session::$data->user->token_id) {
+        if ($conf && $conf->token_privileges === 'true' && Session::$data->user->token_id) {
             $count = $conn->execScalar (
                 ' SELECT COUNT(*) FROM ##privileges p '.
                 ' INNER JOIN ##token_privileges tp ON tp.privilege_id = p.privilege_id'.
@@ -398,7 +410,7 @@ class Sentinel
 
         if (!Sentinel::status()) return false;
 
-        if ($conf && $conf->tokenPrivileges === 'true' && Session::$data->user->token_id) {
+        if ($conf && $conf->token_privileges === 'true' && Session::$data->user->token_id) {
             $count = $conn->execScalar (
                 ' SELECT COUNT(*) FROM ##privileges p '.
                 ' INNER JOIN ##token_privileges tp ON tp.privilege_id = p.privilege_id'.
@@ -437,7 +449,7 @@ class Sentinel
         
         if (!Sentinel::status()) return 0;
 
-        if ($conf && $conf->tokenPrivileges === 'true' && Session::$data->user->token_id) {
+        if ($conf && $conf->token_privileges === 'true' && Session::$data->user->token_id) {
             $level = $conn->execScalar (
                 ' SELECT MAX(FLOOR(p.privilege_id/100)) FROM ##privileges p '.
                 ' INNER JOIN ##token_privileges tp ON tp.privilege_id = p.privilege_id'.
@@ -459,13 +471,14 @@ class Sentinel
 /* ****************************************************************************** */
 
 /**
- * Calculates the hash of the given password and returns it. The plain password gets the `Sentinel.suffix` and `Sentinel.prefix` configuration
- * properties appended and prepended respectively before calculating its hash indicated by `Sentinel.hash`.
+ * Calculates the hash of the given password and returns it. The plain password gets the `suffix` and `prefix` configuration fields
+ * appended and prepended respectively before calculating its hash. The hash algorithm is set by the `hash` configuration field.
  * @code (`sentinel:password` <password>)
  */
 Expr::register('sentinel:password', function($args) {
     return Sentinel::password($args->get(1));
 });
+
 
 /**
  * Returns the authentication status (boolean) of the active session.
@@ -474,6 +487,7 @@ Expr::register('sentinel:password', function($args) {
 Expr::register('sentinel:status', function($args) {
     return Sentinel::status();
 });
+
 
 /**
  * Fails with error code `401` if the active session is not authenticated.
@@ -484,53 +498,56 @@ Expr::register('sentinel:auth-required', function($args)
     $conf = Configuration::getInstance()->Sentinel;
     if (Sentinel::status()) return null;
 
-    if ($conf && $conf->authBasic === 'true') {
+    if ($conf && $conf->auth_basic === 'true') {
         Gateway::header('HTTP/1.1 401 Not Authenticated');
         Gateway::header('WWW-Authenticate: Basic');
     }
 
-    Wind::reply([ 'response' => Wind::R_UNAUTHORIZED ]);
+    Wind::reply([ 'response' => Wind::R_UNAUTHORIZED, 'error' => Sentinel::errorString(Sentinel::ERR_AUTH_REQUIRED) ]);
     return null;
 });
 
+
 /**
- * Verifies if the active session has the specified privileges. Fails with `401` if the session has not been authenticated, 
- * or with `403` if the privilege requirements are not met. The string contains privilege name sets separated by pipe (|), 
- * and AND-groups separated by ampersand (&).
+ * Verifies if the active session has the specified privileges. Fails with `401` if the session has not been authenticated, or with
+ * `403` if the privilege requirements are not met. The privileges string contains the privilege names OR-sets separated by pipe (|),
+ * and the AND-sets separated by ampersand (&).
  * @code (`sentinel:privilege-required` <privileges>)
  */
 Expr::register('sentinel:privilege-required', function($args)
 {
     $conf = Configuration::getInstance()->Sentinel;
-    if (Sentinel::verifyPrivileges($args->get(1))) return null;
+    if (Sentinel::verifyPrivileges($args->get(1)))
+        return null;
 
     if (Sentinel::status())
-        Wind::reply([ 'response' => Wind::R_FORBIDDEN ]);
+        Wind::reply([ 'response' => Wind::R_FORBIDDEN, 'error' => Sentinel::errorString(Sentinel::ERR_PRIVILEGE_REQUIRED) ]);
 
-    if ($conf && $conf->authBasic === 'true') {
+    if ($conf && $conf->auth_basic === 'true') {
         Gateway::header('HTTP/1.1 401 Not Authenticated');
         Gateway::header('WWW-Authenticate: Basic');
     }
 
-    Wind::reply([ 'response' => Wind::R_UNAUTHORIZED ]);
+    Wind::reply([ 'response' => Wind::R_UNAUTHORIZED, 'error' => Sentinel::errorString(Sentinel::ERR_AUTH_REQUIRED) ]);
     return null;
 });
 
+
 /**
- * Verifies if the active session has the specified privileges. Returns boolean. The string contains privilege name sets
- * separated by pipe (|), and AND-groups separated by ampersand (&).
+ * Verifies if the active session has the specified privileges. Returns boolean. The privileges string contains the privilege
+ * name sets (see `sentinel:privilege-required`).
  * @code (`sentinel:has-privilege` <privileges>)
  */
 Expr::register('sentinel:has-privilege', function($args) {
     return Sentinel::verifyPrivileges($args->get(1), $args->{2});
 });
 
+
 /**
- * Checks the privileges of the active user against one of the case values. Returns the respective result or the default result if none
- * matches. If no default result is specified, empty string is returned. Each case string contains privilege name sets separated by
- * pipe (|), and AND-groups separated by ampersand (&).
+ * Checks the privileges of the active user against one of the case values. Returns the respective result or the default result if
+ * none matches. If no default result is specified an empty string will be returned. Note that each case result should be a value
+ * not a block. Each case string is a privilege name set (see `sentinel:privilege-required`).
  *
- * Note: This is meant for values, not blocks. Just like the standard `case` in Violet.
  * @code (`sentinel:case` <case1> <result1> ... [default <default>])
  * @example
  * (sentinel:case
@@ -542,22 +559,23 @@ Expr::register('sentinel:has-privilege', function($args) {
  */
 Expr::register('_sentinel:case', function($parts, $data)
 {
-	$n = $parts->length();
-	for ($i = 1; $i < $n; $i += 2)
-	{
-		$case_value = (string)Expr::expand($parts->get($i), $data, 'arg');
-		if ($i == $n-1 && !($n&1)) return $case_value;
+    $n = $parts->length();
+    for ($i = 1; $i < $n; $i += 2)
+    {
+        $case_value = (string)Expr::expand($parts->get($i), $data, 'arg');
+        if ($i == $n-1 && !($n&1)) return $case_value;
 
-		if (Sentinel::verifyPrivileges($case_value) || $case_value === 'default')
-			return Expr::expand($parts->get($i+1), $data, 'arg');
-	}
+        if (Sentinel::verifyPrivileges($case_value) || $case_value === 'default')
+            return Expr::expand($parts->get($i+1), $data, 'arg');
+    }
 
     return '';
 });
 
+
 /**
  * Verifies if the active user meets the specified minimum privilege level. The level is the privilege_id divided by 100. Fails with `401` 
- * if the user has not been authenticated, or with `403` if the privilege requirements are not met.
+ * if the user has not been authenticated, or with `403` if the privilege level requirements are not met.
  * @code (`sentinel:level-required` <level>)
  */
 Expr::register('sentinel:level-required', function($args)
@@ -566,19 +584,20 @@ Expr::register('sentinel:level-required', function($args)
     if (Sentinel::hasLevel ($args->get(1))) return null;
 
     if (Sentinel::status())
-        Wind::reply([ 'response' => Wind::R_FORBIDDEN ]);
+        Wind::reply([ 'response' => Wind::R_FORBIDDEN, 'error' => Sentinel::errorString(Sentinel::ERR_LEVEL_REQUIRED) ]);
 
-    if ($conf && $conf->authBasic === 'true') {
+    if ($conf && $conf->auth_basic === 'true') {
         Gateway::header('HTTP/1.1 401 Not Authenticated');
         Gateway::header('WWW-Authenticate: Basic');
     }
 
-    Wind::reply([ 'response' => Wind::R_UNAUTHORIZED ]);
+    Wind::reply([ 'response' => Wind::R_UNAUTHORIZED, 'error' => Sentinel::errorString(Sentinel::ERR_AUTH_REQUIRED) ]);
     return null;
 });
 
+
 /**
- * Verifies if the active user meets the specified minimum privilege level. The level is the privilege_id divided by 100, returns boolean.
+ * Verifies if the active user meets the specified minimum privilege level. The level is the privilege_id divided by 100. Returns boolean.
  * @code (`sentinel:has-level` <level>)
  */
 Expr::register('sentinel:has-level', function($args) {
@@ -600,16 +619,16 @@ Expr::register('sentinel:get-level', function($args) {
  * @code (`sentinel:validate` <username> <password>)
  */
 Expr::register('sentinel:validate', function($args) {
-    return Sentinel::valid ($args->get(1), $args->get(2)) == Sentinel::ERR_NONE;
+    return Sentinel::valid ($args->get(1), $args->get(2)) === Sentinel::ERR_NONE;
 });
 
 
 /**
- * Verifies if the given credentials are valid, fails with `422` and sets the `error` field to "strings.@messages.err_authorization" or 
- * "strings.@messages.err_credentials". When successful, opens a session and loads the `user` field with the data of the user that has been authenticated.
+ * Verifies if the given credentials are valid, fails with `422` and sets the `error` field accordingly. When successful, opens a session
+ * and loads the `user` field with the data of the user that has been authenticated.
  *
  * Note that Sentinel will automatically run the login process (without creating a session) if the `Authorization: BASIC data` header is detected 
- * and the `authBasic` is enabled in the configuration.
+ * and the `auth_basic` flag is enabled in the configuration.
  *
  * When using Apache, the `HTTP_AUTHORIZATION` header is not sent to the application, however by setting the following in your `.htaccess` it 
  * will be available for Sentinel to use it.
@@ -621,23 +640,20 @@ Expr::register('sentinel:login', function($args)
 {
     $code = Sentinel::login ($args->get(1), $args->get(2));
     if ($code != Sentinel::ERR_NONE)
-        Wind::reply([ 'response' => Wind::R_VALIDATION_ERROR, 'error' => Strings::get('@messages.'.Sentinel::errorName($code)) ]);
+        Wind::reply([ 'response' => Wind::R_VALIDATION_ERROR, 'error' => Sentinel::errorString($code) ]);
     return null;
 });
 
 
 /**
- * First checks that `authBearer` is set to `true` (enabled) in the Sentinel configuration, when disabled fails with `422` and sets the `error` 
- * field to "strings.@messages.err_bearer_disabled".
+ * Checks if the `auth_bearer` flag is set to `true` in the Sentinel configuration and then verifies the validity of the token
+ * and authorizes access. On errors return status code `422` and sets the `error` field accordingly.
  *
- * After the initial check it verifies if the given token is valid and authorizes access. Fails with `422` and sets the `error` field
- * to "strings.@messages.err_authorization".
- * 
- * When successful, opens a session if `persistent` is set to `true`, and loads the `user` field with the data of the user related to the
- * token that just was authorized.
+ * When successful, opens a session only if the `persistent` flag is set to `true`, and loads the `user` field of the session
+ * with the data of the user related to the token that was just authorized.
  * 
  * Note that Sentinel will automatically run the authorization process (without creating a session) if the `Authorization: BEARER token`
- * header is detected and `authBearer` is enabled in the configuration.
+ * header is detected while `auth_bearer` is enabled in the configuration.
  * 
  * @code (`sentinel:authorize` <token> [persistent=false])
  */
@@ -649,14 +665,15 @@ Expr::register('sentinel:authorize', function($args)
         $code = Sentinel::authorize ($args->get(1), false);
 
     if ($code != Sentinel::ERR_NONE)
-        Wind::reply([ 'response' => Wind::R_VALIDATION_ERROR, 'error' => Strings::get('@messages.'.Sentinel::errorName($code)) ]);
+        Wind::reply([ 'response' => Wind::R_VALIDATION_ERROR, 'error' => Sentinel::errorString($code) ]);
 
     return null;
 });
 
 
 /**
- * Returns the `token_id` of the active session or `null` if the user is not authenticated or if the user authenticated by other means without a token.
+ * Returns the `token_id` of the active session or `null` if the user is either not authenticated yet or the user
+ * authenticated by other means without a token (i.e. regular login).
  * @code (`sentinel:token-id`)
  */
 Expr::register('sentinel:token-id', function($args) {
@@ -666,9 +683,9 @@ Expr::register('sentinel:token-id', function($args) {
 
 
 /**
- * Initializes a session and loads the specified data object into the `user` session field, effectively creating (manually) an
- * authenticated session. If the data does not exist in the database, use only the `auth-required` and `logout` functions
- * for access control, all others will fail.
+ * Starts a session and loads the specified data object into the `user` session field, effectively creating (manually) an
+ * authenticated session. If the data being placed in the session does not actually exist in the database, ensure to use only
+ * the `sentinel:auth-required` and `sentinel:logout` functions in your API, all others that query the database will fail.
  * @code (`sentinel:login-manual` <data>)
  */
 Expr::register('sentinel:login-manual', function($args) {
@@ -678,23 +695,22 @@ Expr::register('sentinel:login-manual', function($args) {
 
 
 /**
- * Verifies if the user exist and forces a login **without** password. Fails with `422` and sets the `error` field
- * to "strings.@messages.err_authorization" or "strings.@messages.err_credentials".
- *
- * When successful, opens a session and loads the `user` field with the data of the user that has been authenticated.
+ * Verifies if the user exist and forces a login **without** any password. Fails with `422` and sets the `error` field
+ * accordingly. When successful, opens a session and loads the `user` field of the session with the data of the user
+ * that was just authenticated.
  * @code (`sentinel:login-user` <user_id>)
  */
 Expr::register('sentinel:login-user', function($args) {
     $code = Sentinel::login ($args->get(1), null, true, false);
     if ($code != Sentinel::ERR_NONE)
-        Wind::reply([ 'response' => Wind::R_VALIDATION_ERROR, 'error' => Strings::get('@messages.'.Sentinel::errorName($code)) ]);
+        Wind::reply([ 'response' => Wind::R_VALIDATION_ERROR, 'error' => Sentinel::errorString($code) ]);
     return null;
 });
 
 
 /**
  * Removes authentication status from the active session. Note that this function does not remove the session itself, only
- * the authentication data of the user. Use `session:destroy` to remove the session completely.
+ * the authentication data related to the user. Use `session:destroy` afterwards to fully remove the session completely.
  * @code (`sentinel:logout`)
  */
 Expr::register('sentinel:logout', function($args) {
@@ -704,7 +720,7 @@ Expr::register('sentinel:logout', function($args) {
 
 
 /**
- * Reloads the active session data and privileges from the database.
+ * Reloads the active user's session data and privileges from the database.
  * @code (`sentinel:reload`)
  */
 Expr::register('sentinel:reload', function($args) {
@@ -714,7 +730,8 @@ Expr::register('sentinel:reload', function($args) {
 
 
 /**
- * Checks if an identifier has been banned or blocked. In either case an error will be returned.
+ * Ensures the provided identifier is not either banned or blocked. Fails with status code `409` and with the default
+ * error message if the `message` parameter is not provided.
  * @code (`sentinel:access-required` <identifier> [message])
  */
 Expr::register('sentinel:access-required', function($args)
@@ -727,8 +744,8 @@ Expr::register('sentinel:access-required', function($args)
 
     if ($data->is_banned) {
         Wind::reply([ 
-            'response' => Wind::R_BACK_OFF, 
-            'error' => $args->{2} ?? Strings::get('@messages.err_banned')
+            'response' => Wind::R_CUSTOM_ERROR, 
+            'error' => $args->{2} ?? Sentinel::errorString(Sentinel::ERR_AUTHORIZATION_BANNED)
         ]);
     }
 
@@ -751,8 +768,8 @@ Expr::register('sentinel:access-required', function($args)
             $str_delta .= $delta . 's';
 
         Wind::reply([ 
-            'response' => Wind::R_BACK_OFF, 
-            'error' => Strings::get('@messages.err_retry_later') . ' (' . Text::trim($str_delta) . ')', 
+            'response' => Wind::R_CUSTOM_ERROR, 
+            'error' => Sentinel::errorString(Sentinel::ERR_RETRY_LATER) . ' (' . Text::trim($str_delta) . ')', 
             'retry_at' => (string)$next_attempt_at,
             'wait' => $next_attempt_at->sub(new DateTime($data->last_attempt_at))
         ]);
@@ -763,8 +780,8 @@ Expr::register('sentinel:access-required', function($args)
 
 
 /**
- * Registers an access-denied attempt for the specified identifier. Returns a status indicating the
- * action taken for the identifier, valid values are `auto`, `wait`, `block`, or `ban`.
+ * Registers an access-denied attempt for the specified identifier. Returns a string indicating the action taken for
+ * the identifier, valid values are `auto`, `wait`, `block`, or `ban`.
  * @code (`sentinel:access-denied` <identifier> [action='auto'] [wait-timeout=2] [block-timeout=30])
  */
 Expr::register('sentinel:access-denied', function($args)
@@ -826,8 +843,8 @@ Expr::register('sentinel:access-denied', function($args)
 
 
 /**
- * Grants access to an identifier, calling this will reset the failed and blocked counters. A ban will
- * continue to be in effect unless the `unban` parameter is set to `true`.
+ * Grants access to an identifier, calling this will reset the failed and blocked counters. A ban will **continue**
+ * to be in effect unless the `unban` parameter is set to `true`.
  * @code (`sentinel:access-granted` <identifier> [unban=false])
  */
 Expr::register('sentinel:access-granted', function($args)
