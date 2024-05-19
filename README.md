@@ -139,37 +139,37 @@ Returns the authentication status (boolean) of the active session.
 ### (`sentinel:auth-required`)
 Fails with error code `401` if the active session is not authenticated.
 
-### (`sentinel:privilege-required` \<privileges>)
-Verifies if the active session has the specified privileges. Fails with `401` if the session has not been authenticated, or with
-`403` if the privilege requirements are not met. The privileges string contains the privilege names OR-sets separated by pipe (|),
+### (`sentinel:permission-required` \<permissions>)
+Verifies if the active session has the specified permissions. Fails with `401` if the session has not been authenticated, or with
+`403` if the permission requirements are not met. The permissions string contains the permission names OR-sets separated by pipe (|),
 and the AND-sets separated by ampersand (&).
 
-### (`sentinel:has-privilege` \<privileges>)
-Verifies if the active session has the specified privileges. Returns boolean. The privileges string contains the privilege
-name sets (see `sentinel:privilege-required`).
+### (`sentinel:has-permission` \<permissions>)
+Verifies if the active session has the specified permissions. Returns boolean. The permissions string contains the permission
+name sets (see `sentinel:permission-required`).
 
 ### (`sentinel:case` \<case1> \<result1> ... [default \<default>])
-Checks the privileges of the active user against one of the case values. Returns the respective result or the default result if
+Checks the permissions of the active user against one of the case values. Returns the respective result or the default result if
 none matches. If no default result is specified an empty string will be returned. Note that each case result should be a value
-not a block. Each case string is a privilege name set (see `sentinel:privilege-required`).
+not a block. Each case string is a permission name set (see `sentinel:permission-required`).
 ```lisp
 (sentinel:case
-    "admin"      "Has privileges admin"
-    "client"     "Has privileges client"
-    "x | y"      "Has privileges x or y"
-    "a & b & c"  "Has privileges a, b and c"
+    "admin"      "Has permission admin"
+    "client"     "Has permission client"
+    "x | y"      "Has permission x or y"
+    "a & b & c"  "Has permission a, b and c"
 )
 ```
 
 ### (`sentinel:level-required` \<level>)
-Verifies if the active user meets the specified minimum privilege level. The level is the privilege_id divided by 100. Fails with `401` 
-if the user has not been authenticated, or with `403` if the privilege level requirements are not met.
+Verifies if the active user meets the specified minimum permission level. The level is the permission_id divided by 100. Fails with `401` 
+if the user has not been authenticated, or with `403` if the permission level requirements are not met.
 
 ### (`sentinel:has-level` \<level>)
-Verifies if the active user meets the specified minimum privilege level. The level is the privilege_id divided by 100. Returns boolean.
+Verifies if the active user meets the specified minimum permission level. The level is the permission_id divided by 100. Returns boolean.
 
 ### (`sentinel:get-level` [username])
-Returns the privilege level of the active session user, or of the given user if `username` is provided.
+Returns the permission level of the active session user, or of the given user if `username` is provided.
 
 ### (`sentinel:validate` \<username> \<password>)
 Verifies if the given credentials are valid, returns boolean.
@@ -215,7 +215,7 @@ Removes authentication status from the active session. Note that this function d
 the authentication data related to the user. Use `session:destroy` afterwards to fully remove the session completely.
 
 ### (`sentinel:reload`)
-Reloads the active user's session data and privileges from the database.
+Reloads the active user's session data and permissions from the database.
 
 ### (`sentinel:access-required` \<identifier> [message])
 Ensures the provided identifier is not either banned or blocked. Fails with status code `409` and with the default
