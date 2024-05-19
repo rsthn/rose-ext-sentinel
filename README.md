@@ -31,27 +31,27 @@ CREATE INDEX users_username ON users (username, deleted_at);
 ```
 
 ```sql
-CREATE TABLE privileges
+CREATE TABLE permissions
 (
-    privilege_id INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    permission_id INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
     name VARCHAR(128) NOT NULL UNIQUE
 )
 ENGINE=InnoDB CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 ```
 
 ```sql
-CREATE TABLE user_privileges
+CREATE TABLE user_permissions
 (
     user_id INT NOT NULL,
-    privilege_id INT NOT NULL,
+    permission_id INT NOT NULL,
     flag INT DEFAULT 0,
-    PRIMARY KEY (user_id, privilege_id),
+    PRIMARY KEY (user_id, permission_id),
     FOREIGN KEY (user_id) REFERENCES users (user_id),
-    FOREIGN KEY (privilege_id) REFERENCES privileges (privilege_id)
+    FOREIGN KEY (permission_id) REFERENCES permissions (permission_id)
 )
 ENGINE=InnoDB CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-CREATE INDEX user_privileges_flag ON user_privileges (user_id, flag);
+CREATE INDEX user_permissions_flag ON user_permissions (user_id, flag);
 ```
 
 ### Token Authorization
@@ -77,18 +77,18 @@ CREATE INDEX tokens_token ON tokens (token, deleted_at);
 ```
 
 ```sql
-CREATE TABLE token_privileges
+CREATE TABLE token_permissions
 (
     token_id INT NOT NULL,
-    privilege_id INT NOT NULL,
+    permission_id INT NOT NULL,
     flag INT DEFAULT 0,
-    PRIMARY KEY (token_id, privilege_id),
+    PRIMARY KEY (token_id, permission_id),
     FOREIGN KEY (token_id) REFERENCES tokens (token_id),
-    FOREIGN KEY (privilege_id) REFERENCES privileges (privilege_id)
+    FOREIGN KEY (permission_id) REFERENCES permissions (permission_id)
 )
 ENGINE=InnoDB CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-CREATE INDEX token_privileges_flag ON token_privileges (token_id, flag);
+CREATE INDEX token_permissions_flag ON token_permissions (token_id, flag);
 ```
 
 ### Identifier Banning
@@ -120,10 +120,10 @@ ENGINE=InnoDB CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci AUTO_INCREMENT=1;
 |hash|string|Name of the hash algorithm to use (passed directly to PHP's hash function).|sha384
 |prefix|string|Password prefix (salt).|-
 |suffix|string|Password suffix (salt).|-
-|master|bool|Indicates if privilege `master` should be added to all privilege checks.|false
+|master|bool|Indicates if permission `master` should be added to all permissions checks.|false
 |auth_bearer|bool|When set to `true`, allows authentication via "Authorization: Bearer" header and enables the `sentinel:authorize` function.|false
 |auth_basic|bool|When set to `true`, allows authentication via "Authorization: Basic" header and automatically sends `WWW-Authenticate` header along with HTTP status 401 when authentication has not been completed.|false
-|token_privileges|bool|When set to `true`, privileges will be loaded from the `token_privileges` table instead of `user_privileges` when the user authenticates using a token.|false
+|token_permissions|bool|When set to `true`, permissions will be loaded from the `token_permissions` table instead of `user_permissions` when the user authenticates using a token.|false
 
 <br/><br/>
 

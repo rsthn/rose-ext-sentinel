@@ -33,7 +33,7 @@ class Sentinel
     public const ERR_INVALID_CREDENTIALS    = 2;
     public const ERR_AUTH_BEARER_DISABLED   = 3;
     public const ERR_AUTH_REQUIRED          = 4;
-    public const ERR_PRIVILEGE_REQUIRED     = 5;
+    public const ERR_PERMISSION_REQUIRED    = 5;
     public const ERR_LEVEL_REQUIRED         = 6;
     public const ERR_AUTHORIZATION_BANNED   = 7;
     public const ERR_RETRY_LATER            = 8;
@@ -59,10 +59,10 @@ class Sentinel
                 return Strings::get('@messages.authorization_bearer_not_supported');
             case Sentinel::ERR_AUTH_REQUIRED:
                 return Strings::get('@messages.authentication_required');
-            case Sentinel::ERR_PRIVILEGE_REQUIRED:
-                return Strings::get('@messages.required_privileges_not_fulfilled');
+            case Sentinel::ERR_PERMISSION_REQUIRED:
+                return Strings::get('@messages.required_permission_not_fulfilled');
             case Sentinel::ERR_LEVEL_REQUIRED:
-                return Strings::get('@messages.required_privileges_level_not_fulfilled');
+                return Strings::get('@messages.required_permission_level_not_fulfilled');
             case Sentinel::ERR_AUTHORIZATION_BANNED:
                 return Strings::get('@messages.authorization_banned');
             case Sentinel::ERR_RETRY_LATER:
@@ -88,26 +88,26 @@ class Sentinel
     }
 
     /**
-     * Returns the privileges of the current user (or token privileges if `token_privileges` is enabled).
+     * Returns the permissions of the current user (or token permissions if `token_permissions` is enabled).
      * @returns {string[]}
      */
-    private static function getPrivileges()
+    private static function getPermissions()
     {
         $conn = Resources::getInstance()->Database;
         if (!Sentinel::status()) return new Arry();
 
         $conf = Configuration::getInstance()->Sentinel;
-        if ($conf && $conf->token_privileges === 'true' && Session::$data->user->token_id) {
+        if ($conf && $conf->token_permissions === 'true' && Session::$data->user->token_id) {
             return $conn->execQuery(
-                'SELECT DISTINCT p.privilege_id, p.name FROM ##privileges p '.
-                'INNER JOIN ##token_privileges t ON t.privilege_id = p.privilege_id '.
+                'SELECT DISTINCT p.permission_id, p.name FROM ##permissions p '.
+                'INNER JOIN ##token_permissions t ON t.permission_id = p.permission_id '.
                 'WHERE t.token_id = '.Session::$data->user->token_id
             );
         }
 
         return $conn->execQuery(
-            'SELECT DISTINCT p.privilege_id, p.name FROM ##privileges p '.
-            'INNER JOIN ##user_privileges u ON u.privilege_id = p.privilege_id '.
+            'SELECT DISTINCT p.permission_id, p.name FROM ##permissions p '.
+            'INNER JOIN ##user_permissions u ON u.permission_id = p.permission_id '.
             'WHERE u.user_id = '.Session::$data->user->user_id
         );
     }
@@ -186,9 +186,9 @@ class Sentinel
         if ($openSession) Session::open(true);
 
         Session::$data->user = $data;
-        $list = Sentinel::getPrivileges();
-        $data->privileges = $list->map(function($i) { return $i->name; });
-        $data->privilege_ids = $list->map(function($i) { return $i->privilege_id; });
+        $list = Sentinel::getPermissions();
+        $data->permissions = $list->map(function($i) { return $i->name; });
+        $data->permission_ids = $list->map(function($i) { return $i->permission_id; });
         return Sentinel::ERR_NONE;
     }
 
@@ -231,9 +231,9 @@ class Sentinel
         if ($openSession) Session::open(true);
 
         Session::$data->user = $data;
-        $list = Sentinel::getPrivileges();
-        $data->privileges = $list->map(function($i) { return $i->name; });
-        $data->privilege_ids = $list->map(function($i) { return $i->privilege_id; });
+        $list = Sentinel::getPermissions();
+        $data->permissions = $list->map(function($i) { return $i->name; });
+        $data->permission_ids = $list->map(function($i) { return $i->permission_id; });
         return Sentinel::ERR_NONE;
     }
 
@@ -248,8 +248,8 @@ class Sentinel
         Session::open(true);
 
         Session::$data->user = $data;
-        $data->privileges = $data->has('privileges') ? $data->get('privileges') : new Arry();
-        $data->privilege_ids = $data->has('privilege_ids') ? $data->get('privilege_ids') : new Arry();
+        $data->permissions = $data->has('permissions') ? $data->get('permissions') : new Arry();
+        $data->permission_ids = $data->has('permission_ids') ? $data->get('permission_ids') : new Arry();
         return Sentinel::ERR_NONE;
     }
 
@@ -304,51 +304,51 @@ class Sentinel
         if (!$data) return;
 
         Session::$data->user = $data;
-        $list = Sentinel::getPrivileges();
-        $data->privileges = $list->map(function($i) { return $i->name; });
-        $data->privilege_ids = $list->map(function($i) { return $i->privilege_id; });
+        $list = Sentinel::getPermissions();
+        $data->permissions = $list->map(function($i) { return $i->name; });
+        $data->permission_ids = $list->map(function($i) { return $i->permission_id; });
     }
 
     /**
-     * Checks if the current user has one or more privileges.
-     * @param {string} $privilege - Privileges separated by comma.
+     * Checks if the current user has one or more permissions.
+     * @param {string} $permission - Permissions separated by comma.
      * @param {string}null} $username - Username to check, if `null` the current user will be used.
      * @returns {bool}
      */
-    public static function hasPrivilege ($privilege, $username=null)
+    public static function hasPermission ($permission, $username=null)
     {
-        if (!$privilege) return true;
+        if (!$permission) return true;
 
         $conf = Configuration::getInstance()->Sentinel;
         $conn = Resources::getInstance()->Database;
 
-        $privilege = Text::split(',', ($conf && $conf->master === 'true' ? 'master,' : '').$privilege)->map(function($i) { return Connection::escape($i); })->join(',');
+        $permission = Text::split(',', ($conf && $conf->master === 'true' ? 'master,' : '').$permission)->map(function($i) { return Connection::escape($i); })->join(',');
         $count = 0;
 
         if ($username !== null) {
             $count = $conn->execScalar (
-                ' SELECT COUNT(*) FROM ##privileges p '.
-                ' INNER JOIN ##user_privileges up ON up.privilege_id = p.privilege_id'.
+                ' SELECT COUNT(*) FROM ##permissions p '.
+                ' INNER JOIN ##user_permissions up ON up.permission_id = p.permission_id'.
                 ' INNER JOIN ##users u ON u.deleted_at IS NULL AND u.username = '.Connection::escape($username).' AND up.user_id = u.user_id'.
-                ' WHERE p.name IN ('.$privilege.')'
+                ' WHERE p.name IN ('.$permission.')'
             );
             return $count != 0 ? true : false;
         }
 
         if (!Sentinel::status()) return false;
 
-        if ($conf && $conf->token_privileges === 'true' && Session::$data->user->token_id) {
+        if ($conf && $conf->token_permissions === 'true' && Session::$data->user->token_id) {
             $count = $conn->execScalar (
-                ' SELECT COUNT(*) FROM ##privileges p '.
-                ' INNER JOIN ##token_privileges tp ON tp.privilege_id = p.privilege_id'.
-                ' WHERE tp.token_id = '.Session::$data->user->token_id.' AND p.name IN ('.$privilege.')'
+                ' SELECT COUNT(*) FROM ##permissions p '.
+                ' INNER JOIN ##token_permissions tp ON tp.permission_id = p.permission_id'.
+                ' WHERE tp.token_id = '.Session::$data->user->token_id.' AND p.name IN ('.$permission.')'
             );
         }
         else {
             $count = $conn->execScalar (
-                ' SELECT COUNT(*) FROM ##privileges p '.
-                ' INNER JOIN ##user_privileges up ON up.privilege_id = p.privilege_id'.
-                ' WHERE up.user_id = '.Session::$data->user->user_id.' AND p.name IN ('.$privilege.')'
+                ' SELECT COUNT(*) FROM ##permissions p '.
+                ' INNER JOIN ##user_permissions up ON up.permission_id = p.permission_id'.
+                ' WHERE up.user_id = '.Session::$data->user->user_id.' AND p.name IN ('.$permission.')'
             );
         }
 
@@ -356,12 +356,12 @@ class Sentinel
     }
 
     /**
-     * Checks if the current user has at least one privilege group.
-     * @param {string} $value - Privilege sets separated by pipe, AND-groups separated by ampersand (&).
+     * Checks if the current user has at least one permission group.
+     * @param {string} $value - Permission sets separated by pipe, AND-groups separated by ampersand (&).
      * @param {string|null} $username - Username to check, if `null` the current user will be used.
      * @returns {bool}
      */
-    public static function verifyPrivileges ($value, $username=null)
+    public static function verifyPermissions ($value, $username=null)
     {
         if (!$username && !Sentinel::status())
             return false;
@@ -370,9 +370,9 @@ class Sentinel
         foreach ($groups->__nativeArray as $group)
         {
             $groupFailed = false;
-            foreach (Text::split('&', Text::trim($group))->__nativeArray as $privilege)
+            foreach (Text::split('&', Text::trim($group))->__nativeArray as $permission)
             {
-                if (!Sentinel::hasPrivilege (Text::trim($privilege), $username)) {
+                if (!Sentinel::hasPermission (Text::trim($permission), $username)) {
                     $groupFailed = true;
                     break;
                 }
@@ -400,28 +400,28 @@ class Sentinel
 
         if ($username !== null) {
             $count = $conn->execScalar (
-                ' SELECT COUNT(*) FROM ##privileges p '.
-                ' INNER JOIN ##user_privileges up ON up.privilege_id = p.privilege_id'.
+                ' SELECT COUNT(*) FROM ##permissions p '.
+                ' INNER JOIN ##user_permissions up ON up.permission_id = p.permission_id'.
                 ' INNER JOIN ##users u ON u.deleted_at IS NULL AND u.username='.Connection::escape($username).' AND up.user_id = u.user_id'.
-                ' WHERE FLOOR(p.privilege_id/100) >= '.$level
+                ' WHERE FLOOR(p.permission_id/100) >= '.$level
             );
             return $count != 0 ? true : false;
         }
 
         if (!Sentinel::status()) return false;
 
-        if ($conf && $conf->token_privileges === 'true' && Session::$data->user->token_id) {
+        if ($conf && $conf->token_permissions === 'true' && Session::$data->user->token_id) {
             $count = $conn->execScalar (
-                ' SELECT COUNT(*) FROM ##privileges p '.
-                ' INNER JOIN ##token_privileges tp ON tp.privilege_id = p.privilege_id'.
-                ' WHERE tp.token_id = '.Session::$data->user->token_id.' AND FLOOR(p.privilege_id/100) >= '.$level
+                ' SELECT COUNT(*) FROM ##permissions p '.
+                ' INNER JOIN ##token_permissions tp ON tp.permission_id = p.permission_id'.
+                ' WHERE tp.token_id = '.Session::$data->user->token_id.' AND FLOOR(p.permission_id/100) >= '.$level
             );
         }
         else {
             $count = $conn->execScalar (
-                ' SELECT COUNT(*) FROM ##privileges p '.
-                ' INNER JOIN ##user_privileges up ON up.privilege_id = p.privilege_id'.
-                ' WHERE up.user_id = '.Session::$data->user->user_id.' AND FLOOR(p.privilege_id/100) >= '.$level
+                ' SELECT COUNT(*) FROM ##permissions p '.
+                ' INNER JOIN ##user_permissions up ON up.permission_id = p.permission_id'.
+                ' WHERE up.user_id = '.Session::$data->user->user_id.' AND FLOOR(p.permission_id/100) >= '.$level
             );
         }
 
@@ -440,8 +440,8 @@ class Sentinel
 
         if ($username !== null) {
             $level = $conn->execScalar (
-                ' SELECT MAX(FLOOR(p.privilege_id/100)) FROM ##privileges p '.
-                ' INNER JOIN ##user_privileges up ON up.privilege_id = p.privilege_id'.
+                ' SELECT MAX(FLOOR(p.permission_id/100)) FROM ##permissions p '.
+                ' INNER JOIN ##user_permissions up ON up.permission_id = p.permission_id'.
                 ' INNER JOIN ##users u ON u.deleted_at IS NULL AND u.username = '.Connection::escape($username).' AND up.user_id = u.user_id'
             );
             return (int)$level;
@@ -449,17 +449,17 @@ class Sentinel
         
         if (!Sentinel::status()) return 0;
 
-        if ($conf && $conf->token_privileges === 'true' && Session::$data->user->token_id) {
+        if ($conf && $conf->token_permissions === 'true' && Session::$data->user->token_id) {
             $level = $conn->execScalar (
-                ' SELECT MAX(FLOOR(p.privilege_id/100)) FROM ##privileges p '.
-                ' INNER JOIN ##token_privileges tp ON tp.privilege_id = p.privilege_id'.
+                ' SELECT MAX(FLOOR(p.permission_id/100)) FROM ##permissions p '.
+                ' INNER JOIN ##token_permissions tp ON tp.permission_id = p.permission_id'.
                 ' WHERE tp.token_id = '.Session::$data->user->token_id
             );
         }
         else {
             $level = $conn->execScalar (
-                ' SELECT MAX(FLOOR(p.privilege_id/100)) FROM ##privileges p '.
-                ' INNER JOIN ##user_privileges up ON up.privilege_id = p.privilege_id'.
+                ' SELECT MAX(FLOOR(p.permission_id/100)) FROM ##permissions p '.
+                ' INNER JOIN ##user_permissions up ON up.permission_id = p.permission_id'.
                 ' WHERE up.user_id = '.Session::$data->user->user_id
             );
         }
@@ -509,19 +509,19 @@ Expr::register('sentinel:auth-required', function($args)
 
 
 /**
- * Verifies if the active session has the specified privileges. Fails with `401` if the session has not been authenticated, or with
- * `403` if the privilege requirements are not met. The privileges string contains the privilege names OR-sets separated by pipe (|),
+ * Verifies if the active session has the specified permissions. Fails with `401` if the session has not been authenticated, or with
+ * `403` if the permission requirements are not met. The permissions string contains the permission names OR-sets separated by pipe (|),
  * and the AND-sets separated by ampersand (&).
- * @code (`sentinel:privilege-required` <privileges>)
+ * @code (`sentinel:permission-required` <permissions>)
  */
-Expr::register('sentinel:privilege-required', function($args)
+Expr::register('sentinel:permission-required', function($args)
 {
     $conf = Configuration::getInstance()->Sentinel;
-    if (Sentinel::verifyPrivileges($args->get(1)))
+    if (Sentinel::verifyPermissions($args->get(1)))
         return null;
 
     if (Sentinel::status())
-        Wind::reply([ 'response' => Wind::R_FORBIDDEN, 'error' => Sentinel::errorString(Sentinel::ERR_PRIVILEGE_REQUIRED) ]);
+        Wind::reply([ 'response' => Wind::R_FORBIDDEN, 'error' => Sentinel::errorString(Sentinel::ERR_PERMISSION_REQUIRED) ]);
 
     if ($conf && $conf->auth_basic === 'true') {
         Gateway::header('HTTP/1.1 401 Not Authenticated');
@@ -534,27 +534,27 @@ Expr::register('sentinel:privilege-required', function($args)
 
 
 /**
- * Verifies if the active session has the specified privileges. Returns boolean. The privileges string contains the privilege
- * name sets (see `sentinel:privilege-required`).
- * @code (`sentinel:has-privilege` <privileges>)
+ * Verifies if the active session has the specified permissions. Returns boolean. The permissions string contains the permission
+ * name sets (see `sentinel:permission-required`).
+ * @code (`sentinel:has-permission` <permissions>)
  */
-Expr::register('sentinel:has-privilege', function($args) {
-    return Sentinel::verifyPrivileges($args->get(1), $args->{2});
+Expr::register('sentinel:has-permission', function($args) {
+    return Sentinel::verifyPermissions($args->get(1), $args->{2});
 });
 
 
 /**
- * Checks the privileges of the active user against one of the case values. Returns the respective result or the default result if
+ * Checks the permissions of the active user against one of the case values. Returns the respective result or the default result if
  * none matches. If no default result is specified an empty string will be returned. Note that each case result should be a value
- * not a block. Each case string is a privilege name set (see `sentinel:privilege-required`).
+ * not a block. Each case string is a permission name set (see `sentinel:permission-required`).
  *
  * @code (`sentinel:case` <case1> <result1> ... [default <default>])
  * @example
  * (sentinel:case
- *     "admin"      "Has privileges admin"
- *     "client"     "Has privileges client"
- *     "x | y"      "Has privileges x or y"
- *     "a & b & c"  "Has privileges a, b and c"
+ *     "admin"      "Has permission admin"
+ *     "client"     "Has permission client"
+ *     "x | y"      "Has permission x or y"
+ *     "a & b & c"  "Has permission a, b and c"
  * )
  */
 Expr::register('_sentinel:case', function($parts, $data)
@@ -565,7 +565,7 @@ Expr::register('_sentinel:case', function($parts, $data)
         $case_value = (string)Expr::expand($parts->get($i), $data, 'arg');
         if ($i == $n-1 && !($n&1)) return $case_value;
 
-        if (Sentinel::verifyPrivileges($case_value) || $case_value === 'default')
+        if (Sentinel::verifyPermissions($case_value) || $case_value === 'default')
             return Expr::expand($parts->get($i+1), $data, 'arg');
     }
 
@@ -574,8 +574,8 @@ Expr::register('_sentinel:case', function($parts, $data)
 
 
 /**
- * Verifies if the active user meets the specified minimum privilege level. The level is the privilege_id divided by 100. Fails with `401` 
- * if the user has not been authenticated, or with `403` if the privilege level requirements are not met.
+ * Verifies if the active user meets the specified minimum permission level. The level is the permission_id divided by 100. Fails with `401` 
+ * if the user has not been authenticated, or with `403` if the permission level requirements are not met.
  * @code (`sentinel:level-required` <level>)
  */
 Expr::register('sentinel:level-required', function($args)
@@ -597,7 +597,7 @@ Expr::register('sentinel:level-required', function($args)
 
 
 /**
- * Verifies if the active user meets the specified minimum privilege level. The level is the privilege_id divided by 100. Returns boolean.
+ * Verifies if the active user meets the specified minimum permission level. The level is the permission_id divided by 100. Returns boolean.
  * @code (`sentinel:has-level` <level>)
  */
 Expr::register('sentinel:has-level', function($args) {
@@ -606,7 +606,7 @@ Expr::register('sentinel:has-level', function($args) {
 
 
 /**
- * Returns the privilege level of the active session user, or of the given user if `username` is provided.
+ * Returns the permission level of the active session user, or of the given user if `username` is provided.
  * @code (`sentinel:get-level` [username])
  */
 Expr::register('sentinel:get-level', function($args) {
@@ -720,7 +720,7 @@ Expr::register('sentinel:logout', function($args) {
 
 
 /**
- * Reloads the active user's session data and privileges from the database.
+ * Reloads the active user's session data and permissions from the database.
  * @code (`sentinel:reload`)
  */
 Expr::register('sentinel:reload', function($args) {
