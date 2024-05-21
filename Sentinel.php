@@ -32,11 +32,12 @@ class Sentinel
     public const ERR_AUTHORIZATION_BLOCKED  = 1;
     public const ERR_INVALID_CREDENTIALS    = 2;
     public const ERR_AUTH_BEARER_DISABLED   = 3;
-    public const ERR_AUTH_REQUIRED          = 4;
-    public const ERR_PERMISSION_REQUIRED    = 5;
-    public const ERR_LEVEL_REQUIRED         = 6;
-    public const ERR_AUTHORIZATION_BANNED   = 7;
-    public const ERR_RETRY_LATER            = 8;
+    public const ERR_AUTH_BASIC_DISABLED    = 4;
+    public const ERR_AUTH_REQUIRED          = 5;
+    public const ERR_PERMISSION_REQUIRED    = 6;
+    public const ERR_LEVEL_REQUIRED         = 7;
+    public const ERR_AUTHORIZATION_BANNED   = 8;
+    public const ERR_RETRY_LATER            = 9;
 
     /**
      * Indicates if the session has been loaded.
@@ -57,6 +58,8 @@ class Sentinel
                 return Strings::get('@messages.invalid_credentials');
             case Sentinel::ERR_AUTH_BEARER_DISABLED:
                 return Strings::get('@messages.authorization_bearer_not_supported');
+            case Sentinel::ERR_AUTH_BASIC_DISABLED:
+                return Strings::get('@messages.authorization_basic_not_supported');
             case Sentinel::ERR_AUTH_REQUIRED:
                 return Strings::get('@messages.authentication_required');
             case Sentinel::ERR_PERMISSION_REQUIRED:
@@ -132,12 +135,16 @@ class Sentinel
         if (!$auth) return Session::$data->user !== null ? true : false;
 
         $tmp = Text::toUpperCase($auth);
-        if (Text::startsWith($tmp, 'BEARER') && $conf && $conf->auth_bearer === 'true') {
+        if (Text::startsWith($tmp, 'BEARER')) {
             $code = self::authorize(Text::substring($auth, 7), false);
             if ($code !== Sentinel::ERR_NONE)
                 Wind::reply([ 'response' => Wind::R_VALIDATION_ERROR, 'error' => Sentinel::errorString($code) ]);
         }
-        else if (Text::startsWith($tmp, 'BASIC') && $conf && $conf->auth_basic === 'true') {
+        else if (Text::startsWith($tmp, 'BASIC'))
+        {
+            if ($conf && $conf->auth_basic !== 'true')
+                Wind::reply([ 'response' => Wind::R_VALIDATION_ERROR, 'error' => Sentinel::errorString(Sentinel::ERR_AUTH_BASIC_DISABLED) ]);
+
             $auth = base64_decode(Text::substring($auth, 6));
             $i = strpos($auth, ':');
             if ($i == -1) {

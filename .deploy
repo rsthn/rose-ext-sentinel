@@ -1,3 +1,4 @@
+
 ECHO {clr 92}Updating documentation ...{clr 0}
     RUN rose :vdocs Sentinel.php
 
@@ -8,7 +9,7 @@ ECHO {clr 92}Bumping up version ...{clr 0}
 
 ECHO {clr 92}Commiting ...{clr 0}
     RUN git add .
-    RUN git commit -m "v{NEW_VERSION}"
+    RUN git commit -m "{coalesce {args.0} 'v{NEW_VERSION}'}"
 
 ECHO {clr 92}Pushing ...{clr 0}
     RUN git push
