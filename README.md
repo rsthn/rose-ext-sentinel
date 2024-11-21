@@ -143,6 +143,10 @@ Fails with error code `401` if the active session is not authenticated.
 Verifies if the active session has the specified permissions. Fails with `401` if the session has not been authenticated, or with
 `403` if the permission requirements are not met. The permissions string contains the permission names OR-sets separated by pipe (|),
 and the AND-sets separated by ampersand (&).
+```lisp
+(sentinel:permission-required "admin | provider & enabled | customer")
+; false
+```
 
 ### (`sentinel:has-permission` \<permissions>)
 Verifies if the active session has the specified permissions. Returns boolean. The permissions string contains the permission
@@ -167,12 +171,24 @@ if the user has not been authenticated, or with `403` if the permission level re
 
 ### (`sentinel:has-level` \<level>)
 Verifies if the active user meets the specified minimum permission level. The level is the permission_id divided by 100. Returns boolean.
+```lisp
+(sentinel:has-level 7)
+; true
+```
 
 ### (`sentinel:get-level` [username])
 Returns the permission level of the active session user, or of the given user if `username` is provided.
+```lisp
+(sentinel:get-level "admin")
+; 7
+```
 
 ### (`sentinel:validate` \<username> \<password>)
 Verifies if the given credentials are valid, returns boolean.
+```lisp
+(sentinel:validate "admin" "admin")
+; true
+```
 
 ### (`sentinel:login` \<username> \<password>)
 Verifies if the given credentials are valid, fails with `422` and sets the `error` field accordingly. When successful, opens a session
@@ -199,32 +215,60 @@ and authorizes access. On errors return status code `422` and sets the `error` f
 ### (`sentinel:token-id`)
 Returns the `token_id` of the active session or `null` if the user is either not authenticated yet or the user
 authenticated by other means without a token (i.e. regular login).
+```lisp
+(sentinel:token-id)
+; 13
+```
 
 ### (`sentinel:login-manual` \<data>)
 Starts a session and loads the specified data object into the `user` session field, effectively creating (manually) an
 authenticated session. If the data being placed in the session does not actually exist in the database, ensure to use only
 the `sentinel:auth-required` and `sentinel:logout` functions in your API, all others that query the database will fail.
+```lisp
+(sentinel:login-manual { user_id 1 permissions ["admin"] })
+```
 
 ### (`sentinel:login-user` \<user_id>)
 Verifies if the user exist and forces a login **without** any password. Fails with `422` and sets the `error` field
 accordingly. When successful, opens a session and loads the `user` field of the session with the data of the user
 that was just authenticated.
+```lisp
+(sentinel:login-user 1)
+```
 
 ### (`sentinel:logout`)
 Removes authentication status from the active session. Note that this function does not remove the session itself, only
 the authentication data related to the user. Use `session:destroy` afterwards to fully remove the session completely.
 
 ### (`sentinel:reload`)
-Reloads the active user's session data and permissions from the database.
+Reloads the active user's session data and permissions from the database. Do not call this function if you logged in in a
+manual way using `sentinel:login-manual` because the user's data you placed will be overwritten.
 
 ### (`sentinel:access-required` \<identifier> [message])
 Ensures the provided identifier is not either banned or blocked. Fails with status code `409` and with the default
 error message if the `message` parameter is not provided.
+```lisp
+(sentinel:access-required "127.0.0.1" "Your IP has been blocked.")
+; If identifier `127.0.0.1` is blocked:
+; {"response":409, "error":"@messages.retry_later (60s)", "retry_at":"2024-11-21 11:20:00", "wait":60}
+
+(sentinel:access-required "127.0.0.1" "Your IP has been blocked.")
+; If identifier `127.0.0.1` is banned:
+; {"response":409, "error":"Your IP has been blocked."}
+```
 
 ### (`sentinel:access-denied` \<identifier> [action='auto'] [wait-timeout=2] [block-timeout=30])
 Registers an access-denied attempt for the specified identifier. Returns a string indicating the action taken for
 the identifier, valid values are `auto`, `wait`, `block`, or `ban`.
+```lisp
+(sentinel:access-denied "127.0.0.1")
+; "wait"
+```
 
 ### (`sentinel:access-granted` \<identifier> [unban=false])
 Grants access to an identifier, calling this will reset the failed and blocked counters. A ban will **continue**
 to be in effect unless the `unban` parameter is set to `true`.
+```lisp
+(sentinel:access-granted "127.0.0.1" true)
+; null
+```

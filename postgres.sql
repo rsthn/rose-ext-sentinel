@@ -25,8 +25,8 @@ CREATE TABLE permissions
 --------------------------------------------------------------------------------
 CREATE TABLE user_permissions
 (
-    user_id INT NOT NULL REFERENCES users (user_id)
-    , permission_id INT NOT NULL REFERENCES permissions (permission_id)
+    user_id INT NOT NULL REFERENCES users (user_id) ON DELETE CASCADE
+    , permission_id INT NOT NULL REFERENCES permissions (permission_id) ON DELETE CASCADE
     , flag INT DEFAULT 0
     , PRIMARY KEY (user_id, permission_id)
 );
@@ -52,7 +52,7 @@ CREATE TABLE tokens
     , user_id INT NOT NULL
     , token VARCHAR(128) NOT NULL UNIQUE
     , name VARCHAR(128) NOT NULL
-    , FOREIGN KEY (user_id) REFERENCES users (user_id)
+    , FOREIGN KEY (user_id) REFERENCES users (user_id) ON DELETE CASCADE
 );
 CREATE INDEX tokens_user_id ON tokens (user_id, deleted_at);
 CREATE INDEX tokens_token ON tokens (token, deleted_at);
@@ -60,8 +60,8 @@ CREATE INDEX tokens_token ON tokens (token, deleted_at);
 --------------------------------------------------------------------------------
 CREATE TABLE token_permissions
 (
-    token_id INT NOT NULL REFERENCES tokens (token_id)
-    , permission_id INT NOT NULL REFERENCES permissions (permission_id)
+    token_id INT NOT NULL REFERENCES tokens (token_id) ON DELETE CASCADE
+    , permission_id INT NOT NULL REFERENCES permissions (permission_id) ON DELETE CASCADE
     , flag INT DEFAULT 0
     , PRIMARY KEY (token_id, permission_id)
 );

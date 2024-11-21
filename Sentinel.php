@@ -520,6 +520,9 @@ Expr::register('sentinel:auth-required', function($args)
  * `403` if the permission requirements are not met. The permissions string contains the permission names OR-sets separated by pipe (|),
  * and the AND-sets separated by ampersand (&).
  * @code (`sentinel:permission-required` <permissions>)
+ * @example
+ * (sentinel:permission-required "admin | provider & enabled | customer")
+ * ; false
  */
 Expr::register('sentinel:permission-required', function($args)
 {
@@ -588,7 +591,7 @@ Expr::register('_sentinel:case', function($parts, $data)
 Expr::register('sentinel:level-required', function($args)
 {
     $conf = Configuration::getInstance()->Sentinel;
-    if (Sentinel::hasLevel ($args->get(1))) return null;
+    if (Sentinel::hasLevel($args->get(1))) return null;
 
     if (Sentinel::status())
         Wind::reply([ 'response' => Wind::R_FORBIDDEN, 'error' => Sentinel::errorString(Sentinel::ERR_LEVEL_REQUIRED) ]);
@@ -606,27 +609,36 @@ Expr::register('sentinel:level-required', function($args)
 /**
  * Verifies if the active user meets the specified minimum permission level. The level is the permission_id divided by 100. Returns boolean.
  * @code (`sentinel:has-level` <level>)
+ * @example
+ * (sentinel:has-level 7)
+ * ; true
  */
 Expr::register('sentinel:has-level', function($args) {
-    return Sentinel::hasLevel ($args->get(1));
+    return Sentinel::hasLevel($args->get(1));
 });
 
 
 /**
  * Returns the permission level of the active session user, or of the given user if `username` is provided.
  * @code (`sentinel:get-level` [username])
+ * @example
+ * (sentinel:get-level "admin")
+ * ; 7
  */
 Expr::register('sentinel:get-level', function($args) {
-    return Sentinel::getLevel ($args->has(1) ? $args->get(1) : null);
+    return Sentinel::getLevel($args->has(1) ? $args->get(1) : null);
 });
 
 
 /**
  * Verifies if the given credentials are valid, returns boolean.
  * @code (`sentinel:validate` <username> <password>)
+ * @example
+ * (sentinel:validate "admin" "admin")
+ * ; true
  */
 Expr::register('sentinel:validate', function($args) {
-    return Sentinel::valid ($args->get(1), $args->get(2)) === Sentinel::ERR_NONE;
+    return Sentinel::valid($args->get(1), $args->get(2)) === Sentinel::ERR_NONE;
 });
 
 
@@ -682,6 +694,9 @@ Expr::register('sentinel:authorize', function($args)
  * Returns the `token_id` of the active session or `null` if the user is either not authenticated yet or the user
  * authenticated by other means without a token (i.e. regular login).
  * @code (`sentinel:token-id`)
+ * @example
+ * (sentinel:token-id)
+ * ; 13
  */
 Expr::register('sentinel:token-id', function($args) {
     $user = Session::$data->user;
@@ -694,6 +709,8 @@ Expr::register('sentinel:token-id', function($args) {
  * authenticated session. If the data being placed in the session does not actually exist in the database, ensure to use only
  * the `sentinel:auth-required` and `sentinel:logout` functions in your API, all others that query the database will fail.
  * @code (`sentinel:login-manual` <data>)
+ * @example
+ * (sentinel:login-manual { user_id 1 permissions ["admin"] })
  */
 Expr::register('sentinel:login-manual', function($args) {
     Sentinel::manual ($args->get(1));
@@ -706,6 +723,8 @@ Expr::register('sentinel:login-manual', function($args) {
  * accordingly. When successful, opens a session and loads the `user` field of the session with the data of the user
  * that was just authenticated.
  * @code (`sentinel:login-user` <user_id>)
+ * @example
+ * (sentinel:login-user 1)
  */
 Expr::register('sentinel:login-user', function($args) {
     $code = Sentinel::login ($args->get(1), null, true, false);
@@ -727,7 +746,8 @@ Expr::register('sentinel:logout', function($args) {
 
 
 /**
- * Reloads the active user's session data and permissions from the database.
+ * Reloads the active user's session data and permissions from the database. Do not call this function if you logged in in a
+ * manual way using `sentinel:login-manual` because the user's data you placed will be overwritten.
  * @code (`sentinel:reload`)
  */
 Expr::register('sentinel:reload', function($args) {
@@ -740,6 +760,14 @@ Expr::register('sentinel:reload', function($args) {
  * Ensures the provided identifier is not either banned or blocked. Fails with status code `409` and with the default
  * error message if the `message` parameter is not provided.
  * @code (`sentinel:access-required` <identifier> [message])
+ * @example
+ * (sentinel:access-required "127.0.0.1" "Your IP has been blocked.")
+ * ; If identifier `127.0.0.1` is blocked:
+ * ; {"response":409, "error":"@messages.retry_later (60s)", "retry_at":"2024-11-21 11:20:00", "wait":60}
+ *
+ * (sentinel:access-required "127.0.0.1" "Your IP has been blocked.")
+ * ; If identifier `127.0.0.1` is banned:
+ * ; {"response":409, "error":"Your IP has been blocked."}
  */
 Expr::register('sentinel:access-required', function($args)
 {
@@ -790,6 +818,9 @@ Expr::register('sentinel:access-required', function($args)
  * Registers an access-denied attempt for the specified identifier. Returns a string indicating the action taken for
  * the identifier, valid values are `auto`, `wait`, `block`, or `ban`.
  * @code (`sentinel:access-denied` <identifier> [action='auto'] [wait-timeout=2] [block-timeout=30])
+ * @example
+ * (sentinel:access-denied "127.0.0.1")
+ * ; "wait"
  */
 Expr::register('sentinel:access-denied', function($args)
 {
@@ -820,7 +851,7 @@ Expr::register('sentinel:access-denied', function($args)
             ') VALUES (' . $conn->escapeExt($data->values())->join(', ') . ')'
         );
 
-        return $action;
+        return $action === 'auto' ? 'wait' : $action;
     }
 
     $data->last_attempt_at = (string)$now;
@@ -853,6 +884,9 @@ Expr::register('sentinel:access-denied', function($args)
  * Grants access to an identifier, calling this will reset the failed and blocked counters. A ban will **continue**
  * to be in effect unless the `unban` parameter is set to `true`.
  * @code (`sentinel:access-granted` <identifier> [unban=false])
+ * @example
+ * (sentinel:access-granted "127.0.0.1" true)
+ * ; null
  */
 Expr::register('sentinel:access-granted', function($args)
 {
@@ -866,5 +900,5 @@ Expr::register('sentinel:access-granted', function($args)
         ' WHERE identifier='.Connection::escape($identifier)
     );
 
-    return true;
+    return null;
 });

@@ -1,3 +1,4 @@
+#!rose :deploy
 
 ECHO {clr 92}Updating documentation ...{clr 0}
     RUN rose :vdocs Sentinel.php
