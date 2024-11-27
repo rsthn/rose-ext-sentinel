@@ -104,14 +104,14 @@ class Sentinel
             return $conn->execQuery(
                 'SELECT DISTINCT p.permission_id, p.name FROM ##permissions p '.
                 'INNER JOIN ##token_permissions t ON t.permission_id = p.permission_id '.
-                'WHERE t.token_id = '.Session::$data->user->token_id
+                'WHERE p.deleted_at IS NULL AND t.token_id = '.Session::$data->user->token_id
             );
         }
 
         return $conn->execQuery(
             'SELECT DISTINCT p.permission_id, p.name FROM ##permissions p '.
             'INNER JOIN ##user_permissions u ON u.permission_id = p.permission_id '.
-            'WHERE u.user_id = '.Session::$data->user->user_id
+            'WHERE p.deleted_at IS NULL AND u.user_id = '.Session::$data->user->user_id
         );
     }
 
@@ -337,7 +337,7 @@ class Sentinel
                 ' SELECT COUNT(*) FROM ##permissions p '.
                 ' INNER JOIN ##user_permissions up ON up.permission_id = p.permission_id'.
                 ' INNER JOIN ##users u ON u.deleted_at IS NULL AND u.username = '.Connection::escape($username).' AND up.user_id = u.user_id'.
-                ' WHERE p.name IN ('.$permission.')'
+                ' WHERE p.deleted_at IS NULL AND p.name IN ('.$permission.')'
             );
             return $count != 0 ? true : false;
         }
@@ -348,14 +348,14 @@ class Sentinel
             $count = $conn->execScalar (
                 ' SELECT COUNT(*) FROM ##permissions p '.
                 ' INNER JOIN ##token_permissions tp ON tp.permission_id = p.permission_id'.
-                ' WHERE tp.token_id = '.Session::$data->user->token_id.' AND p.name IN ('.$permission.')'
+                ' WHERE p.deleted_at IS NULL AND tp.token_id = '.Session::$data->user->token_id.' AND p.name IN ('.$permission.')'
             );
         }
         else {
             $count = $conn->execScalar (
                 ' SELECT COUNT(*) FROM ##permissions p '.
                 ' INNER JOIN ##user_permissions up ON up.permission_id = p.permission_id'.
-                ' WHERE up.user_id = '.Session::$data->user->user_id.' AND p.name IN ('.$permission.')'
+                ' WHERE p.deleted_at IS NULL AND up.user_id = '.Session::$data->user->user_id.' AND p.name IN ('.$permission.')'
             );
         }
 
@@ -410,7 +410,7 @@ class Sentinel
                 ' SELECT COUNT(*) FROM ##permissions p '.
                 ' INNER JOIN ##user_permissions up ON up.permission_id = p.permission_id'.
                 ' INNER JOIN ##users u ON u.deleted_at IS NULL AND u.username='.Connection::escape($username).' AND up.user_id = u.user_id'.
-                ' WHERE FLOOR(p.permission_id/100) >= '.$level
+                ' WHERE p.deleted_at IS NULL AND FLOOR(p.permission_id/100) >= '.$level
             );
             return $count != 0 ? true : false;
         }
@@ -421,14 +421,14 @@ class Sentinel
             $count = $conn->execScalar (
                 ' SELECT COUNT(*) FROM ##permissions p '.
                 ' INNER JOIN ##token_permissions tp ON tp.permission_id = p.permission_id'.
-                ' WHERE tp.token_id = '.Session::$data->user->token_id.' AND FLOOR(p.permission_id/100) >= '.$level
+                ' WHERE p.deleted_at IS NULL AND tp.token_id = '.Session::$data->user->token_id.' AND FLOOR(p.permission_id/100) >= '.$level
             );
         }
         else {
             $count = $conn->execScalar (
                 ' SELECT COUNT(*) FROM ##permissions p '.
                 ' INNER JOIN ##user_permissions up ON up.permission_id = p.permission_id'.
-                ' WHERE up.user_id = '.Session::$data->user->user_id.' AND FLOOR(p.permission_id/100) >= '.$level
+                ' WHERE p.deleted_at IS NULL AND up.user_id = '.Session::$data->user->user_id.' AND FLOOR(p.permission_id/100) >= '.$level
             );
         }
 
@@ -448,7 +448,7 @@ class Sentinel
         if ($username !== null) {
             $level = $conn->execScalar (
                 ' SELECT MAX(FLOOR(p.permission_id/100)) FROM ##permissions p '.
-                ' INNER JOIN ##user_permissions up ON up.permission_id = p.permission_id'.
+                ' INNER JOIN ##user_permissions up ON up.permission_id = p.permission_id AND p.deleted_at IS NULL'.
                 ' INNER JOIN ##users u ON u.deleted_at IS NULL AND u.username = '.Connection::escape($username).' AND up.user_id = u.user_id'
             );
             return (int)$level;
@@ -460,14 +460,14 @@ class Sentinel
             $level = $conn->execScalar (
                 ' SELECT MAX(FLOOR(p.permission_id/100)) FROM ##permissions p '.
                 ' INNER JOIN ##token_permissions tp ON tp.permission_id = p.permission_id'.
-                ' WHERE tp.token_id = '.Session::$data->user->token_id
+                ' WHERE p.deleted_at IS NULL AND tp.token_id = '.Session::$data->user->token_id
             );
         }
         else {
             $level = $conn->execScalar (
                 ' SELECT MAX(FLOOR(p.permission_id/100)) FROM ##permissions p '.
                 ' INNER JOIN ##user_permissions up ON up.permission_id = p.permission_id'.
-                ' WHERE up.user_id = '.Session::$data->user->user_id
+                ' WHERE p.deleted_at IS NULL AND up.user_id = '.Session::$data->user->user_id
             );
         }
 

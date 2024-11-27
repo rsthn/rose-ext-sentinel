@@ -18,6 +18,7 @@ CREATE INDEX users_username ON users (username, deleted_at);
 CREATE TABLE permissions
 (
     permission_id INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    deleted_at DATETIME DEFAULT NULL,
     name VARCHAR(128) NOT NULL UNIQUE
 )
 ENGINE=InnoDB CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
