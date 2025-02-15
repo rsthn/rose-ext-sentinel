@@ -1,0 +1,109 @@
+{
+    "_readme": [
+        "This file locks the dependencies of your project to a known state",
+        "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
+        "This file is @generated automatically"
+    ],
+    "content-hash": "c256a49c628108927558ffc4ee3fcd79",
+    "packages": [
+        {
+            "name": "rsthn/rose-core",
+            "version": "v5.0.23",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/rsthn/rose-core.git",
+                "reference": "b17012feae0ae3f60b0bd614aa08abc725dee8a0"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/rsthn/rose-core/zipball/b17012feae0ae3f60b0bd614aa08abc725dee8a0",
+                "reference": "b17012feae0ae3f60b0bd614aa08abc725dee8a0",
+                "shasum": ""
+            },
+            "require": {
+                "php": "^8"
+            },
+            "type": "library",
+            "autoload": {
+                "psr-4": {
+                    "Rose\\": "src"
+                }
+            },
+            "notification-url": "https://packagist.org/downloads/",
+            "license": [
+                "Apache-2.0"
+            ],
+            "authors": [
+                {
+                    "name": "Jonathan Palencia",
+                    "email": "strikeone88@rsthn.com",
+                    "role": "Developer"
+                }
+            ],
+            "description": "Rose Framework - Core",
+            "homepage": "https://github.com/rsthn/rose-core",
+            "support": {
+                "issues": "https://github.com/rsthn/rose-core/issues",
+                "source": "https://github.com/rsthn/rose-core/tree/v5.0.23"
+            },
+            "time": "2025-01-26T06:08:18+00:00"
+        },
+        {
+            "name": "rsthn/rose-extension-installer",
+            "version": "1.0.11",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/rsthn/rose-extension-installer.git",
+                "reference": "2d90c13cf506ccb8772432bbda9fe0e82bb9957f"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/rsthn/rose-extension-installer/zipball/2d90c13cf506ccb8772432bbda9fe0e82bb9957f",
+                "reference": "2d90c13cf506ccb8772432bbda9fe0e82bb9957f",
+                "shasum": ""
+            },
+            "require": {
+                "composer-plugin-api": "^2.0"
+            },
+            "require-dev": {
+                "composer/composer": "^1.3"
+            },
+            "type": "composer-plugin",
+            "extra": {
+                "class": "Rose\\Composer\\ExtensionInstallerPlugin"
+            },
+            "autoload": {
+                "psr-4": {
+                    "Rose\\Composer\\": "src"
+                }
+            },
+            "notification-url": "https://packagist.org/downloads/",
+            "license": [
+                "Apache-2.0"
+            ],
+            "authors": [
+                {
+                    "name": "Jonathan Palencia",
+                    "email": "strikeone88@rsthn.com",
+                    "role": "Developer"
+                }
+            ],
+            "description": "Rose Framework - Extension Installer",
+            "homepage": "https://github.com/rsthn/rose-extension-installer",
+            "support": {
+                "issues": "https://github.com/rsthn/rose-extension-installer/issues",
+                "source": "https://github.com/rsthn/rose-extension-installer/tree/v1.0.11"
+            },
+            "time": "2022-01-18T08:04:40+00:00"
+        }
+    ],
+    "packages-dev": [],
+    "aliases": [],
+    "minimum-stability": "stable",
+    "stability-flags": [],
+    "prefer-stable": false,
+    "prefer-lowest": false,
+    "platform": [],
+    "platform-dev": [],
+    "plugin-api-version": "2.6.0"
+}

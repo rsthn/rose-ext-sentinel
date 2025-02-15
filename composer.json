@@ -14,7 +14,7 @@
     },
     "minimum-stability": "stable",
     "require": {
-        "rsthn/rose-core": "^5.0.5",
+        "rsthn/rose-core": "^5",
         "rsthn/rose-extension-installer": "*"
     },
     "autoload": {
