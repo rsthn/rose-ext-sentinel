@@ -545,8 +545,9 @@ Expr::register('sentinel:permission-required', function($args)
 
 /**
  * Verifies if the active session has the specified permissions. Returns boolean. The permissions string contains the permission
- * name sets (see `sentinel:permission-required`).
- * @code (`sentinel:has-permission` <permissions>)
+ * name sets (see `sentinel:permission-required`). If `username` is provided, the check is performed against that user instead
+ * of the active session.
+ * @code (`sentinel:has-permission` <permissions> [username])
  */
 Expr::register('sentinel:has-permission', function($args) {
     return Sentinel::verifyPermissions($args->get(1), $args->{2});
