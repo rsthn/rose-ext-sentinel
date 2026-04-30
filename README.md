@@ -12,6 +12,8 @@ composer require rsthn/rose-ext-sentinel
 
 The following tables are required by Sentinel. Note that any of the tables below can be extended if desired, the columns shown are the required minimum.
 
+Ready-to-run schema files are included in the repository: [`mysql.sql`](./mysql.sql) and [`postgres.sql`](./postgres.sql). If you use rose-core's database-backed sessions, the `sessions` table (and `devices` table on PostgreSQL) defined in those files is also required.
+
 ```sql
 CREATE TABLE users
 (
@@ -34,6 +36,7 @@ CREATE INDEX users_username ON users (username, deleted_at);
 CREATE TABLE permissions
 (
     permission_id INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    deleted_at DATETIME DEFAULT NULL,
     name VARCHAR(128) NOT NULL UNIQUE
 )
 ENGINE=InnoDB CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
@@ -148,9 +151,10 @@ and the AND-sets separated by ampersand (&).
 ; false
 ```
 
-### (`sentinel:has-permission` \<permissions>)
+### (`sentinel:has-permission` \<permissions> [username])
 Verifies if the active session has the specified permissions. Returns boolean. The permissions string contains the permission
-name sets (see `sentinel:permission-required`).
+name sets (see `sentinel:permission-required`). If `username` is provided, the check is performed against that user instead
+of the active session.
 
 ### (`sentinel:case` \<case1> \<result1> ... [default \<default>])
 Checks the permissions of the active user against one of the case values. Returns the respective result or the default result if

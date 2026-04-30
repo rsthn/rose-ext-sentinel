@@ -8,16 +8,16 @@
     "packages": [
         {
             "name": "rsthn/rose-core",
-            "version": "v5.0.23",
+            "version": "v5.0.41",
             "source": {
                 "type": "git",
                 "url": "https://github.com/rsthn/rose-core.git",
-                "reference": "b17012feae0ae3f60b0bd614aa08abc725dee8a0"
+                "reference": "85145af0b8a38f7101bad1f74663acb747445cd9"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/rsthn/rose-core/zipball/b17012feae0ae3f60b0bd614aa08abc725dee8a0",
-                "reference": "b17012feae0ae3f60b0bd614aa08abc725dee8a0",
+                "url": "https://api.github.com/repos/rsthn/rose-core/zipball/85145af0b8a38f7101bad1f74663acb747445cd9",
+                "reference": "85145af0b8a38f7101bad1f74663acb747445cd9",
                 "shasum": ""
             },
             "require": {
@@ -44,9 +44,9 @@
             "homepage": "https://github.com/rsthn/rose-core",
             "support": {
                 "issues": "https://github.com/rsthn/rose-core/issues",
-                "source": "https://github.com/rsthn/rose-core/tree/v5.0.23"
+                "source": "https://github.com/rsthn/rose-core/tree/v5.0.41"
             },
-            "time": "2025-01-26T06:08:18+00:00"
+            "time": "2026-04-30T04:22:54+00:00"
         },
         {
             "name": "rsthn/rose-extension-installer",
