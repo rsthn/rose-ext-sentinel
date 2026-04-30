@@ -151,10 +151,9 @@ and the AND-sets separated by ampersand (&).
 ; false
 ```
 
-### (`sentinel:has-permission` \<permissions> [username])
+### (`sentinel:has-permission` \<permissions>)
 Verifies if the active session has the specified permissions. Returns boolean. The permissions string contains the permission
-name sets (see `sentinel:permission-required`). If `username` is provided, the check is performed against that user instead
-of the active session.
+name sets (see `sentinel:permission-required`).
 
 ### (`sentinel:case` \<case1> \<result1> ... [default \<default>])
 Checks the permissions of the active user against one of the case values. Returns the respective result or the default result if
