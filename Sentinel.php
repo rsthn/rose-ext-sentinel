@@ -142,12 +142,12 @@ class Sentinel
         }
         else if (Text::startsWith($tmp, 'BASIC'))
         {
-            if ($conf && $conf->auth_basic !== 'true')
+            if (!$conf || $conf->auth_basic !== 'true')
                 Wind::reply([ 'response' => Wind::R_VALIDATION_ERROR, 'error' => Sentinel::errorString(Sentinel::ERR_AUTH_BASIC_DISABLED) ]);
 
             $auth = base64_decode(Text::substring($auth, 6));
             $i = strpos($auth, ':');
-            if ($i == -1) {
+            if ($i === false) {
                 Gateway::header('HTTP/1.1 401 Not Authenticated');
                 Gateway::header('WWW-Authenticate: Basic');
                 Wind::reply([ 'response' => Wind::R_VALIDATION_ERROR, 'error' => Sentinel::errorString(Sentinel::ERR_INVALID_CREDENTIALS) ]);
@@ -175,7 +175,7 @@ class Sentinel
     public static function authorize (string $token, bool $openSession=true)
     {
         $conf = Configuration::getInstance()->Sentinel;
-        if ($conf && $conf->auth_bearer !== 'true')
+        if (!$conf || $conf->auth_bearer !== 'true')
             return Sentinel::ERR_AUTH_BEARER_DISABLED;
 
         $data = Resources::getInstance()->Database->execAssoc(
@@ -214,7 +214,7 @@ class Sentinel
                 $data = Resources::getInstance()->Database->execAssoc (
                     'SELECT u.*, t.token_id, COALESCE(u.blocked_at, t.blocked_at) blocked_at '.
                     'FROM ##users u '.
-                    'INNER JOIN ##tokens t ON t.blocked_at IS NULL AND t.user_id = u.user_id '.
+                    'INNER JOIN ##tokens t ON t.deleted_at IS NULL AND t.user_id = u.user_id '.
                     'WHERE u.deleted_at IS NULL AND t.token = '.Connection::escape($password)
                 );
             } else {
@@ -299,7 +299,7 @@ class Sentinel
             $data = Resources::getInstance()->Database->execAssoc (
                 'SELECT u.*, t.token_id, COALESCE(u.blocked_at, t.blocked_at) blocked_at '.
                 'FROM ##users u '.
-                'INNER JOIN ##tokens t ON t.blocked_at IS NULL AND t.user_id = u.user_id '.
+                'INNER JOIN ##tokens t ON t.deleted_at IS NULL AND t.user_id = u.user_id '.
                 'WHERE u.deleted_at IS NULL AND t.token_id = '.Connection::escape(Session::$data->user->token_id)
             );
         } else {
@@ -647,10 +647,14 @@ Expr::register('sentinel:validate', function($args) {
  * Verifies if the given credentials are valid, fails with `422` and sets the `error` field accordingly. When successful, opens a session
  * and loads the `user` field with the data of the user that has been authenticated.
  *
- * Note that Sentinel will automatically run the login process (without creating a session) if the `Authorization: BASIC data` header is detected 
+ * Note that Sentinel will automatically run the login process (without creating a session) if the `Authorization: BASIC data` header is detected
  * and the `auth_basic` flag is enabled in the configuration.
  *
- * When using Apache, the `HTTP_AUTHORIZATION` header is not sent to the application, however by setting the following in your `.htaccess` it 
+ * When the credentials in the `Authorization: BASIC data` header use the literal username `token`, the password will be treated as an access
+ * token and verified against the `tokens` table instead of the user's password. This happens regardless of the `auth_bearer` flag, therefore
+ * the `tokens` table is required whenever `auth_basic` is enabled.
+ *
+ * When using Apache, the `HTTP_AUTHORIZATION` header is not sent to the application, however by setting the following in your `.htaccess` it
  * will be available for Sentinel to use it.
  *
  * ```SetEnvIf Authorization "(.*)" HTTP_AUTHORIZATION=$1```
